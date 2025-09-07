@@ -1,2 +1,2 @@
 # mc_ballistics
-[img](docs/plot.png)
+![img](./docs/plot.png)
