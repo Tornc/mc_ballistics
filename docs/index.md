@@ -1,9 +1,1 @@
----
-layout: default
----
-
-<link rel="stylesheet" href="style.css">
-
-<div class="container">
-    <iframe src="plot.html"></iframe>
-</div>
+<iframe src="plot.html" width="800" height="800" frameborder="0"></iframe>
