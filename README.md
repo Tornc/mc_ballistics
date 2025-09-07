@@ -1,2 +1,2 @@
 # mc_ballistics
-{% plot.html %}
+[help](plot.html)
