@@ -1,2 +1,2 @@
 # mc_ballistics
-[help](plot.html)
+[help](https://tornc.github.io/mc_ballistics/)
