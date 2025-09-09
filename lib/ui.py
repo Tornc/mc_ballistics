@@ -14,15 +14,11 @@ default_velocity = 120
 default_min_assumed_velocity = 12
 default_max_assumed_velocity = 120
 
-default_estimate_state = True
-estimate_state = default_estimate_state
-
 default_radar_range = 123
 default_radar_scan_rate = 1
 default_radar_drop_rate = 0.2
 
 default_trajectory = "high"  # "low" or "high"
-
 
 default_target_pos = Vector(6, 7, 8)
 default_cannon_pos = Vector(1, 3, 5)
@@ -33,14 +29,15 @@ default_pitch = 0
 max_assumed_velocity = 1000
 max_environment_size = 1234  # 1500 is good
 
-default_fire_at = True
-default_estimate_state = True
+default_fire_at_target = True
+default_perform_estimation = True
 
 default_min_pitch = -30
 default_max_pitch = 60
 
 
-fire_at = default_fire_at
+fire_at_target = default_fire_at_target
+perform_estimation = default_perform_estimation
 
 trajectory = default_trajectory
 
@@ -57,7 +54,7 @@ cannon = Cannon(
     default_min_pitch,
     default_max_pitch,
 )
-env_size = dict(x=(-10, 10), y=(-10, 10), z=(-10, 10))
+env_size = dict(x=(-max_environment_size, max_environment_size), y=(-max_environment_size, max_environment_size), z=(-max_environment_size, max_environment_size))
 radar = Radar(
     default_radar_pos,
     default_radar_range,
@@ -180,9 +177,9 @@ def sb_clc_cannon():
             placeholder=f"{default_g}",
             help=f"{default_g} for big cannons.",
         )
-        e_cannon_temp = st.toggle(
+        st.toggle(
             "Fire at target",
-            value=fire_at,
+            value=fire_at_target,
             help="Disable if you want to manually fire at ... somewhere.",
         )
         st.number_input(
@@ -192,7 +189,7 @@ def sb_clc_cannon():
             max_value=180.0,
             step=0.1,
             placeholder=f"{default_yaw}",
-            disabled=e_cannon_temp,
+            disabled=not fire_at_target,
             help="-180 to 180",
         )
         st.number_input(
@@ -202,7 +199,7 @@ def sb_clc_cannon():
             max_value=90,
             step=0.1,
             placeholder=f"{default_pitch}",
-            disabled=e_cannon_temp,
+            disabled=not fire_at_target,
             help="-90 (down) to +90 (up).",
         )
 
@@ -235,9 +232,9 @@ def sb_rev_cannon(disable: bool):
         )
         st.slider(
             "Velocity range (m/s)",
-            1,
-            max_assumed_velocity,
-            (default_min_assumed_velocity, default_max_assumed_velocity),
+            value=(default_min_assumed_velocity, default_max_assumed_velocity),
+            min_value=1,
+            max_value=max_assumed_velocity,
             step=1,
             help=f"{default_min_assumed_velocity}-{default_max_assumed_velocity} for big cannons, helps estimator prune bogus results.",
         )
@@ -314,21 +311,21 @@ def sb_environment():
     with st.container(border=True):
         st.slider(
             "X",
-            -max_environment_size,
-            max_environment_size,
-            (-max_environment_size, max_environment_size),
+            value=env_size["x"],
+            min_value=-max_environment_size,
+            max_value=max_environment_size,
         )
         st.slider(
             "Y",
-            -max_environment_size,
-            max_environment_size,
-            (-max_environment_size, max_environment_size),
+            value=env_size["y"],
+            min_value=-max_environment_size,
+            max_value=max_environment_size,
         )
         st.slider(
             "Z",
-            -max_environment_size,
-            max_environment_size,
-            (-max_environment_size, max_environment_size),
+            value=env_size["z"],
+            min_value=-max_environment_size,
+            max_value=max_environment_size,
         )
 
 
@@ -350,19 +347,19 @@ def sidebar():
             sb_clc_cannon()
 
         with st.expander("Reverse calculator"):
-            e_perform_estimation = st.toggle(
+            st.toggle(
                 "Estimate muzzle",
-                value=estimate_state,
+                value=perform_estimation,
                 help="Disabling this causes the settings below to have no impact.",
             )
             st.button(
                 "Reroll observations",
                 icon="🔃",
                 help="Radar drop rate involves randomness and you can get unlucky, causing the estimator to fail.",
-                disabled=not e_perform_estimation,
+                disabled=not perform_estimation,
             )
-            sb_rev_cannon(not e_perform_estimation)
-            sb_rev_radar(not e_perform_estimation)
+            sb_rev_cannon(not perform_estimation)
+            sb_rev_radar(not perform_estimation)
 
         with st.expander("Environment", expanded=False):
             sb_environment()
