@@ -24,7 +24,7 @@ class Cannon:
 class Radar:
     pos: Vector
     range: int
-    interval: float
+    scan_rate: int
     drop_rate: float
 
 
@@ -189,13 +189,11 @@ def get_observed_trajectory(
         list[tuple[float, Vector]]: timestamp in **seconds**, position
     """
     t0 = time()  # Pretend this is when the radar sees projectile.
-    # Game works in 0.05 intervals.
-    scan_interval_ticks = max(1, sec2tick(radar.interval))
     items = []
     for t, pos in trajectory:
         if random.random() < radar.drop_rate:
             continue
-        if t % scan_interval_ticks != 0:
+        if t % radar.scan_rate != 0:
             continue
         # distance
         if pos.sub(radar.pos).length() <= radar.range:
@@ -405,7 +403,7 @@ def estimate_muzzle(
     # 3 is usually enough, but weird things may still happen with c_d and g estimation.
     if len(partial_trajectory) < 2:
         return None, None  # not enough info
-    
+
     obs_v = compute_obs_velocities(partial_trajectory)
 
     c_d = estimate_cd(obs_v) if c_d is None else c_d
@@ -435,7 +433,7 @@ def estimate_muzzle(
             continue
 
         yaw, pitch = velocity_to_angles(v0)
-        # NOTE: length will mess with the simulation due to 
+        # NOTE: length will mess with the simulation due to
         # yaw/pitch  being AT v0, not actual muzzle location.
         cannon_candidate = Cannon(muzzle_pos, speed_ms, 0, g, c_d, yaw, pitch, 0, 0)
         sim_ticks = s + offsets[-1]

@@ -7,9 +7,16 @@ import streamlit as st
 from lib.plotting import *
 from lib.simulation import *
 from lib.utils import *
-from lib.ui import sidebar, results
+from lib.ui import sidebar, plot, results
 
 ICON_PATH = "./assets/img/icon.ico"
+
+DEFAULT_CD = 0.11
+DEFAULT_G = 0.12
+DEFAULT_LENGTH = 12
+DEFAULT_VELOCITY = 120
+DEFAULT_MIN_VELOCITY = 40
+DEFAULT_MAX_VELOCITY = 320
 
 st.set_page_config(
     page_title="Ballistics Simulation",
@@ -30,7 +37,7 @@ st.markdown(
 )
 
 CANNON = Cannon(Vector(50, 10, 80), 280, 24, 0.05, 0.99, 0, 0, -30.0, 60.0)
-radar = Radar(Vector(0, 0, 0), 250, 0.25, 0.0)
+radar = Radar(Vector(0, 0, 0), 250, 0.5, 0.0)
 target_pos = Vector(800, 10, 340)
 radar.pos = target_pos
 
@@ -75,9 +82,9 @@ fig = generate_plot(fig, CANNON, radar, target_pos, round(t))
 
 # TODO: move parts to ui.py or split even further.
 sidebar()
-with st.container(border=True, gap=None):
-    st.plotly_chart(fig, use_container_width=True, theme=None)
+plot(fig)
 results()
+
 
 # This is good for indicating failed observation or sth
 # st.toast("yo", icon=None, duration=3)
