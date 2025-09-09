@@ -3,13 +3,6 @@ import streamlit as st
 import plotly.graph_objects as go
 
 from lib.utils import Vector
-from lib.simulation import (
-    Cannon,
-    Radar,
-    simulate_trajectory,
-    get_observed_trajectory,
-    estimate_muzzle,
-)
 
 
 def add_trace(
@@ -81,6 +74,7 @@ def init_plot(area: dict, width: int = None, height: int = None):
         width=width,
         height=height,
         margin=dict(l=0, r=0, t=0, b=0),
+        # paper_bgcolor="#000000", # TODO: night mode; adjust text and line colours.
         scene=dict(
             # intentional axis swapping
             xaxis=ax_style(area["x"]),
@@ -98,30 +92,4 @@ def init_plot(area: dict, width: int = None, height: int = None):
         ),
         legend=dict(x=0, y=0, bgcolor="rgba(0,0,0,0)"),
     )
-    return fig
-
-
-def generate_plot(
-    fig: go.Figure,
-    cannon: Cannon,
-    radar: Radar,
-    target_pos: Vector,
-    max_ticks: int,
-):
-    trajectory = simulate_trajectory(cannon, max_ticks)
-    add_trace(fig, [p for _, p in trajectory], "lines", "Trajectory", 8)
-    observed_trajectory = get_observed_trajectory(trajectory, radar)
-    # TODO: fix weird edge case that bypasses this check somehow
-    if len(observed_trajectory) > 0:
-        print(len(observed_trajectory))
-        add_trace(fig, [p for _, p in observed_trajectory], "markers", "Observation", 4)
-        est_muzzle_pos, info = estimate_muzzle(observed_trajectory)
-        if est_muzzle_pos is not None:
-            print(f"Est: { est_muzzle_pos}")
-            add_trace(fig, est_muzzle_pos, "markers+text", "Muzzle (estimate)")
-
-    add_trace(fig, cannon.pos, "markers+text", "Cannon", 12)
-    add_trace(fig, target_pos, "markers+text", "Target", 12)
-    add_hemisphere(fig, radar.pos, radar.range, "Radar range")
-
     return fig

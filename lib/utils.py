@@ -1,5 +1,4 @@
 import math
-import streamlit as st
 from dataclasses import dataclass
 from time import time
 
@@ -77,6 +76,9 @@ class Vector:
 
     def __str__(self):
         return f"{self.x} {self.y} {self.z}"
+
+    def equals(self, o):
+        return self.x == o.x and self.y == o.y and self.z == o.z
 
     def copy(self):
         return Vector(self.x, self.y, self.z)

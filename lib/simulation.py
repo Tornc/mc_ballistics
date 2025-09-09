@@ -16,6 +16,8 @@ class Cannon:
     c_d: float
     yaw: float
     pitch: float
+    min_pitch: float
+    max_pitch: float
 
 
 @dataclass
@@ -396,14 +398,14 @@ def estimate_muzzle(
     partial_trajectory: list[tuple[float, Vector]],
     c_d: float = None,
     g: float = None,
+    speed_range: tuple[int, int] = (40, 320),
     max_s: int = 750,
-    speed_range: tuple[int, int] = (40, 500),  # temp
 ):
     # 2 datapoints are enough only if drag and gravity are already known.
     # 3 is usually enough, but weird things may still happen with c_d and g estimation.
     if len(partial_trajectory) < 2:
         return None, None  # not enough info
-
+    
     obs_v = compute_obs_velocities(partial_trajectory)
 
     c_d = estimate_cd(obs_v) if c_d is None else c_d
@@ -433,7 +435,9 @@ def estimate_muzzle(
             continue
 
         yaw, pitch = velocity_to_angles(v0)
-        cannon_candidate = Cannon(muzzle_pos, speed_ms, 0, g, c_d, yaw, pitch)
+        # NOTE: length will mess with the simulation due to 
+        # yaw/pitch  being AT v0, not actual muzzle location.
+        cannon_candidate = Cannon(muzzle_pos, speed_ms, 0, g, c_d, yaw, pitch, 0, 0)
         sim_ticks = s + offsets[-1]
         sim_traj = simulate_trajectory(cannon_candidate, sim_ticks)
 

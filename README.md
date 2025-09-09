@@ -5,4 +5,4 @@ Interactive plot is [here](https://tornc.github.io/mc_ballistics/) (neutered ver
 
 
 TODO: figure out how to pack everything into a single exe
-- stlite maybe
+- use stlite https://github.com/whitphx/stlite/blob/main/packages/desktop/README.md
