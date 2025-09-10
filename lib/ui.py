@@ -4,63 +4,84 @@ import streamlit as st
 from lib.simulation import Cannon, Radar
 from lib.utils import Vector
 
-# TODO: sort this mess
-# The real constants should be in app.py
-default_cd = 0.11
-default_g = 0.12
-default_length = 12
-default_max_length = 128
-default_velocity = 120
-default_min_assumed_velocity = 12
-default_max_assumed_velocity = 120
+# TODO:
+# have a constants .py folder that defines all default states.
+# and also a function (?) that spams:
+# st.session_state["..."] = st.session_state["..."] if "..." in st.session_state else DEFAULT_...
+# for all settings.
 
-default_radar_range = 123
-default_radar_scan_rate = 1
-default_radar_drop_rate = 0.2
+# DEFAULT: CANNON
+df_cannon_pos: Vector = Vector(1, 3, 5)
+df_cannon_velocity: int = 120
+df_cannon_length: int = 12
+df_cannon_g: float = 0.12
+df_cannon_cd: float = 0.11
+df_cannon_yaw: float = 0.0
+df_cannon_pitch: float = 0.0
+df_cannon_min_pitch: float = -30.0
+df_cannon_max_pitch: float = 60.0
+df_cannon_max_length: int = 128  # not in Cannon(), but related.
 
-default_trajectory = "high"  # "low" or "high"
+# DEFAULT: TARGET_POS
+default_target_pos: Vector = Vector(6, 7, 8)
 
-default_target_pos = Vector(6, 7, 8)
-default_cannon_pos = Vector(1, 3, 5)
+# DEFAULT: RADAR
+default_radar_pos: Vector = default_target_pos
+default_radar_range: int = 123
+default_radar_scan_rate: int = 1
+default_radar_drop_rate: float = 0.2
 
-default_yaw = 0
-default_pitch = 0
+# DEFAULT: ESTIMATOR
+# default cd and g are reused from cannon
+df_assumed_velocity_range: tuple[int, int] = (10, 100)
+df_max_assumed_velocity: int = 1000
 
-max_assumed_velocity = 1000
-max_environment_size = 1234  # 1500 is good
+# DEFAULT: ENVIRONMENT
+df_max_environment_size: int = 1500
 
-default_fire_at_target = True
-default_perform_estimation = True
+# DEFAULT: MISC
+default_trajectory_type: str = "high"  # "low" or "high"
+default_fire_at_target: bool = True
+default_perform_estimation: bool = True
 
-default_min_pitch = -30
-default_max_pitch = 60
-
-
-fire_at_target = default_fire_at_target
-perform_estimation = default_perform_estimation
-
-trajectory = default_trajectory
-
-target_pos = default_target_pos
-default_radar_pos = target_pos
-cannon = Cannon(
-    default_cannon_pos,
-    default_velocity,
-    default_length,
-    default_g,
-    default_cd,
-    default_yaw,
-    default_pitch,
-    default_min_pitch,
-    default_max_pitch,
+# INITIAL: CANNON
+cannon: Cannon = Cannon(
+    df_cannon_pos,
+    df_cannon_velocity,
+    df_cannon_length,
+    df_cannon_g,
+    df_cannon_cd,
+    df_cannon_yaw,
+    df_cannon_pitch,
+    df_cannon_min_pitch,
+    df_cannon_max_pitch,
 )
-env_size = dict(x=(-max_environment_size, max_environment_size), y=(-max_environment_size, max_environment_size), z=(-max_environment_size, max_environment_size))
-radar = Radar(
+
+# INITIAL: TARGET_POS
+target_pos: Vector = default_target_pos
+
+# INITIAL: RADAR
+radar: Radar = Radar(
     default_radar_pos,
     default_radar_range,
     default_radar_scan_rate,
     default_radar_drop_rate,
 )
+
+# INITIAL: ESTIMATOR
+assumed_velocity_range: tuple[int, int] = df_assumed_velocity_range
+
+# INITIAL: ENVIRONMENT
+environment_shape: dict[str, tuple[int, int]] = dict(
+    x=(-df_max_environment_size, df_max_environment_size),
+    y=(-df_max_environment_size, df_max_environment_size),
+    z=(-df_max_environment_size, df_max_environment_size),
+)
+
+# INITIAL: MISC
+trajectory_type: str = default_trajectory_type
+fire_at_target: bool = default_fire_at_target
+perform_estimation: bool = default_perform_estimation
 
 
 def center_text(columns, texts):
@@ -76,24 +97,24 @@ def sb_clc_target():
         col[0].number_input(
             "",
             value=target_pos.x,
-            min_value=env_size["x"][0],
-            max_value=env_size["x"][1],
+            min_value=environment_shape["x"][0],
+            max_value=environment_shape["x"][1],
             key="x_target",
             label_visibility="collapsed",
         )
         col[1].number_input(
             "",
             value=target_pos.y,
-            min_value=env_size["y"][0],
-            max_value=env_size["y"][1],
+            min_value=environment_shape["y"][0],
+            max_value=environment_shape["y"][1],
             key="y_target",
             label_visibility="collapsed",
         )
         col[2].number_input(
             "",
             value=target_pos.z,
-            min_value=env_size["z"][0],
-            max_value=env_size["z"][1],
+            min_value=environment_shape["z"][0],
+            max_value=environment_shape["z"][1],
             key="z_target",
             label_visibility="collapsed",
         )
@@ -107,24 +128,24 @@ def sb_clc_cannon():
         col[0].number_input(
             "",
             value=cannon.pos.x,
-            min_value=env_size["x"][0],
-            max_value=env_size["x"][1],
+            min_value=environment_shape["x"][0],
+            max_value=environment_shape["x"][1],
             key="x_cannon",
             label_visibility="collapsed",
         )
         col[1].number_input(
             "",
             value=cannon.pos.y,
-            min_value=env_size["y"][0],
-            max_value=env_size["y"][1],
+            min_value=environment_shape["y"][0],
+            max_value=environment_shape["y"][1],
             key="y_cannon",
             label_visibility="collapsed",
         )
         col[2].number_input(
             "",
             value=cannon.pos.z,
-            min_value=env_size["z"][0],
-            max_value=env_size["z"][1],
+            min_value=environment_shape["z"][0],
+            max_value=environment_shape["z"][1],
             key="z_cannon",
             label_visibility="collapsed",
         )
@@ -133,20 +154,20 @@ def sb_clc_cannon():
             value=cannon.v_ms,
             min_value=1,
             step=10,
-            placeholder=f"{default_velocity}",
+            placeholder=f"{df_cannon_velocity}",
             help="For big cannons, 1 charge is +40 m/s.",
         )
         st.number_input(
             "Cannon length",
             value=cannon.length,
             min_value=1,
-            max_value=default_max_length,
-            placeholder=f"{default_length}",
+            max_value=df_cannon_max_length,
+            placeholder=f"{df_cannon_length}",
             help="24 is max nethersteel big cannon length.",
         )
         st.select_slider(
             "Trajectory type",
-            value=trajectory,
+            value=trajectory_type,
             options=("low", "high"),
             help="Artillery guns usually take the high trajectory.",
         )
@@ -165,8 +186,8 @@ def sb_clc_cannon():
             min_value=0.0,
             max_value=1.0,
             step=0.01,
-            placeholder=f"{default_cd}",
-            help=f"{default_cd} for big cannons.",
+            placeholder=f"{df_cannon_cd}",
+            help=f"{df_cannon_cd} for big cannons.",
         )
         st.number_input(
             "Gravity",
@@ -174,8 +195,8 @@ def sb_clc_cannon():
             min_value=0.0,
             max_value=1.0,
             step=0.01,
-            placeholder=f"{default_g}",
-            help=f"{default_g} for big cannons.",
+            placeholder=f"{df_cannon_g}",
+            help=f"{df_cannon_g} for big cannons.",
         )
         st.toggle(
             "Fire at target",
@@ -188,17 +209,17 @@ def sb_clc_cannon():
             min_value=-180.0,
             max_value=180.0,
             step=0.1,
-            placeholder=f"{default_yaw}",
+            placeholder=f"{df_cannon_yaw}",
             disabled=not fire_at_target,
             help="-180 to 180",
         )
         st.number_input(
             "Pitch",
             value=cannon.pitch,
-            min_value=-90,
-            max_value=90,
+            min_value=-90.0,
+            max_value=90.0,
             step=0.1,
-            placeholder=f"{default_pitch}",
+            placeholder=f"{df_cannon_pitch}",
             disabled=not fire_at_target,
             help="-90 (down) to +90 (up).",
         )
@@ -216,8 +237,8 @@ def sb_rev_cannon(disable: bool):
             min_value=0.0,
             max_value=1.0,
             step=0.01,
-            placeholder=f"{default_cd}",
-            help=f"{default_cd} for big cannons.",
+            placeholder=f"{df_cannon_cd}",
+            help=f"{df_cannon_cd} for big cannons.",
             disabled=disable,
         )
         st.number_input(
@@ -226,17 +247,18 @@ def sb_rev_cannon(disable: bool):
             min_value=0.0,
             max_value=1.0,
             step=0.01,
-            placeholder=f"{default_g}",
-            help=f"{default_g} for big cannons.",
+            placeholder=f"{df_cannon_g}",
+            help=f"{df_cannon_g} for big cannons.",
             disabled=disable,
         )
         st.slider(
             "Velocity range (m/s)",
-            value=(default_min_assumed_velocity, default_max_assumed_velocity),
+            value=assumed_velocity_range,
             min_value=1,
-            max_value=max_assumed_velocity,
+            max_value=df_max_assumed_velocity,
             step=1,
-            help=f"{default_min_assumed_velocity}-{default_max_assumed_velocity} for big cannons, helps estimator prune bogus results.",
+            help=f"{df_assumed_velocity_range} for big cannons, helps estimator prune bogus results.",
+            disabled=disable,
         )
 
 
@@ -248,8 +270,8 @@ def sb_rev_radar(disable: bool):
         cl[0].number_input(
             "",
             value=None,
-            min_value=env_size["x"][0],
-            max_value=env_size["x"][1],
+            min_value=environment_shape["x"][0],
+            max_value=environment_shape["x"][1],
             placeholder=f"{target_pos.x}",
             key="x_radar",
             label_visibility="collapsed",
@@ -258,8 +280,8 @@ def sb_rev_radar(disable: bool):
         cl[1].number_input(
             "",
             value=None,
-            min_value=env_size["y"][0],
-            max_value=env_size["y"][1],
+            min_value=environment_shape["y"][0],
+            max_value=environment_shape["y"][1],
             placeholder=f"{target_pos.y}",
             key="y_radar",
             label_visibility="collapsed",
@@ -268,8 +290,8 @@ def sb_rev_radar(disable: bool):
         cl[2].number_input(
             "",
             value=None,
-            min_value=env_size["z"][0],
-            max_value=env_size["z"][1],
+            min_value=environment_shape["z"][0],
+            max_value=environment_shape["z"][1],
             placeholder=f"{target_pos.z}",
             key="z_radar",
             label_visibility="collapsed",
@@ -311,21 +333,21 @@ def sb_environment():
     with st.container(border=True):
         st.slider(
             "X",
-            value=env_size["x"],
-            min_value=-max_environment_size,
-            max_value=max_environment_size,
+            value=environment_shape["x"],
+            min_value=-df_max_environment_size,
+            max_value=df_max_environment_size,
         )
         st.slider(
             "Y",
-            value=env_size["y"],
-            min_value=-max_environment_size,
-            max_value=max_environment_size,
+            value=environment_shape["y"],
+            min_value=-df_max_environment_size,
+            max_value=df_max_environment_size,
         )
         st.slider(
             "Z",
-            value=env_size["z"],
-            min_value=-max_environment_size,
-            max_value=max_environment_size,
+            value=environment_shape["z"],
+            min_value=-df_max_environment_size,
+            max_value=df_max_environment_size,
         )
 
 

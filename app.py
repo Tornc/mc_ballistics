@@ -6,8 +6,8 @@ import streamlit as st
 
 from lib.plotting import *
 from lib.simulation import *
-from lib.utils import *
 from lib.ui import sidebar, plot, results
+from lib.utils import *
 
 ICON_PATH = "./assets/img/icon.ico"
 
@@ -36,15 +36,14 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-CANNON = Cannon(Vector(50, 10, 80), 280, 24, 0.05, 0.99, 0, 0, -30.0, 60.0)
+cannon = Cannon(Vector(50, 10, 80), 280, 24, 0.05, 0.99, 0, 0, -30.0, 60.0)
 radar = Radar(Vector(0, 0, 0), 250, 0.5, 0.0)
 target_pos = Vector(800, 10, 340)
 radar.pos = target_pos
 
-yaw, pitch, t = calculate_yaw_pitch_t(CANNON, target_pos, low=True)
+yaw, pitch, t = calculate_yaw_pitch_t(cannon, target_pos, low=True)
 if yaw is not None and pitch is not None and t is not None:
-    CANNON.yaw, CANNON.pitch = yaw, pitch
-# TODO: make UI actually functional
+    cannon.yaw, cannon.pitch = yaw, pitch
 
 env_dims = dict(x=(-1500, 1500), y=(-1500, 1500), z=(-1500, 1500))
 
@@ -77,10 +76,9 @@ def generate_plot(
 
 
 fig = init_plot(env_dims, height=600)
-fig = generate_plot(fig, CANNON, radar, target_pos, round(t))
+fig = generate_plot(fig, cannon, radar, target_pos, round(t))
 
 
-# TODO: move parts to ui.py or split even further.
 sidebar()
 plot(fig)
 results()
