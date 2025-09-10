@@ -45,8 +45,6 @@ yaw, pitch, t = calculate_yaw_pitch_t(cannon, target_pos, low=True)
 if yaw is not None and pitch is not None and t is not None:
     cannon.yaw, cannon.pitch = yaw, pitch
 
-env_dims = dict(x=(-1500, 1500), y=(-1500, 1500), z=(-1500, 1500))
-
 
 # TODO: draw radar if pos neq target pos
 def generate_plot(
@@ -75,9 +73,9 @@ def generate_plot(
     return fig
 
 
+env_dims = dict(x=(-1500, 1500), y=(-1500, 1500), z=(-1500, 1500))
 fig = init_plot(env_dims, height=600)
 fig = generate_plot(fig, cannon, radar, target_pos, round(t))
-
 
 sidebar()
 plot(fig)

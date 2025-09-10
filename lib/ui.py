@@ -26,10 +26,10 @@ df_cannon_max_length: int = 128  # not in Cannon(), but related.
 default_target_pos: Vector = Vector(6, 7, 8)
 
 # DEFAULT: RADAR
-default_radar_pos: Vector = default_target_pos
-default_radar_range: int = 123
-default_radar_scan_rate: int = 1
-default_radar_drop_rate: float = 0.2
+df_radar_pos: Vector = default_target_pos
+df_radar_range: int = 123
+df_radar_scan_rate: int = 1
+df_radar_drop_rate: float = 0.2
 
 # DEFAULT: ESTIMATOR
 # default cd and g are reused from cannon
@@ -40,9 +40,9 @@ df_max_assumed_velocity: int = 1000
 df_max_environment_size: int = 1500
 
 # DEFAULT: MISC
-default_trajectory_type: str = "high"  # "low" or "high"
-default_fire_at_target: bool = True
-default_perform_estimation: bool = True
+df_fire_at_target: bool = True
+df_trajectory_type: str = "high"  # "low" or "high"
+df_perform_estimation: bool = True
 
 # INITIAL: CANNON
 cannon: Cannon = Cannon(
@@ -62,10 +62,10 @@ target_pos: Vector = default_target_pos
 
 # INITIAL: RADAR
 radar: Radar = Radar(
-    default_radar_pos,
-    default_radar_range,
-    default_radar_scan_rate,
-    default_radar_drop_rate,
+    df_radar_pos,
+    df_radar_range,
+    df_radar_scan_rate,
+    df_radar_drop_rate,
 )
 
 # INITIAL: ESTIMATOR
@@ -79,9 +79,9 @@ environment_shape: dict[str, tuple[int, int]] = dict(
 )
 
 # INITIAL: MISC
-trajectory_type: str = default_trajectory_type
-fire_at_target: bool = default_fire_at_target
-perform_estimation: bool = default_perform_estimation
+fire_at_target: bool = df_fire_at_target
+trajectory_type: str = df_trajectory_type
+perform_estimation: bool = df_perform_estimation
 
 
 def center_text(columns, texts):
@@ -303,7 +303,7 @@ def sb_rev_radar(disable: bool):
             min_value=1,
             # max_value should be min of absolute val of all area vals... a pain.
             step=1,
-            placeholder=f"{default_radar_range}",
+            placeholder=f"{df_radar_range}",
             help="Radar scan radius in blocks.",
             disabled=disable,
         )
@@ -312,7 +312,7 @@ def sb_rev_radar(disable: bool):
             value=radar.scan_rate,
             min_value=1,
             step=1,
-            placeholder=f"{default_radar_scan_rate}",
+            placeholder=f"{df_radar_scan_rate}",
             help="The radar scans once every N ticks.",
             disabled=disable,
         )
@@ -322,7 +322,7 @@ def sb_rev_radar(disable: bool):
             min_value=0.0,
             max_value=1.0,
             step=0.05,
-            placeholder=f"{default_radar_drop_rate}",
+            placeholder=f"{df_radar_drop_rate}",
             help="Proportion of skipped observations to simulate lag.",
             disabled=disable,
         )
