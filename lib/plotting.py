@@ -1,8 +1,8 @@
 import numpy as np
-import streamlit as st
 import plotly.graph_objects as go
 
 from lib.utils import Vector
+from lib.simulation import Cannon, Radar
 
 
 def add_trace(
@@ -92,4 +92,29 @@ def init_plot(area: dict, width: int = None, height: int = None):
         ),
         legend=dict(x=0, y=0, bgcolor="rgba(0,0,0,0)"),
     )
+    return fig
+
+
+def populate_plot(fig, cannon: Cannon, target_pos: Vector, radar: Radar, stats: dict):
+    add_trace(fig, cannon.pos, "markers+text", "Cannon", 12)
+    add_trace(fig, target_pos, "markers+text", "Target", 12)
+
+    if not radar.pos.equals(target_pos):
+        add_trace(fig, radar.pos, "markers+text", "Radar", 12)
+
+    add_hemisphere(fig, radar.pos, radar.range, "Radar range")
+    if "trajectory" in stats:
+        add_trace(fig, [p for _, p in stats["trajectory"]], "lines", "Trajectory", 8)
+        add_trace(fig, [cannon.pos, stats["trajectory"][0][1]], "lines", "Barrel", 8)
+    if "observed_trajectory" in stats:
+        add_trace(
+            fig,
+            [p for _, p in stats["observed_trajectory"]],
+            "markers",
+            "Observation",
+            4,
+        )
+    if "est_muzzle_pos" in stats:
+        add_trace(fig, stats["est_muzzle_pos"], "markers+text", "Muzzle (estimate)")
+    
     return fig

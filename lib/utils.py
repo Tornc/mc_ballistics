@@ -1,5 +1,6 @@
 import math
 from dataclasses import dataclass
+from numbers import Number
 from time import time
 
 
@@ -33,6 +34,10 @@ def tick2sec(tick: int) -> float:
 
 def sec2tick(sec: float) -> int:
     return round(sec * 20)
+
+
+def safe_extract(key: str, dict: dict):
+    return dict[key] if key in dict else None
 
 
 @dataclass
@@ -74,11 +79,14 @@ class Vector:
             round(self.x / tol), round(self.y / tol), round(self.z / tol)
         ).mul(tol)
 
-    def __str__(self):
-        return f"{self.x} {self.y} {self.z}"
+    def tostring(self):
+        return f"X: {self.x} Y: {self.y} Z: {self.z}"
 
     def equals(self, o):
         return self.x == o.x and self.y == o.y and self.z == o.z
 
     def copy(self):
         return Vector(self.x, self.y, self.z)
+
+    def __str__(self):
+        return self.tostring()

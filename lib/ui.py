@@ -2,7 +2,7 @@ import streamlit as st
 
 # TODO: ALL TEMP; use session state later
 from lib.simulation import Cannon, Radar
-from lib.utils import Vector
+from lib.utils import *
 
 # TODO:
 # have a constants .py folder that defines all default states.
@@ -11,77 +11,77 @@ from lib.utils import Vector
 # for all settings.
 
 # DEFAULT: CANNON
-df_cannon_pos: Vector = Vector(1, 3, 5)
-df_cannon_velocity: int = 120
-df_cannon_length: int = 12
-df_cannon_g: float = 0.12
-df_cannon_cd: float = 0.11
-df_cannon_yaw: float = 0.0
-df_cannon_pitch: float = 0.0
-df_cannon_min_pitch: float = -30.0
-df_cannon_max_pitch: float = 60.0
-df_cannon_max_length: int = 128  # not in Cannon(), but related.
+DF_CANNON_POS: Vector = Vector(1, 3, 5)
+DF_CANNON_VELOCITY: int = 120
+DF_CANNON_LENGTH: int = 12
+DF_CANNON_G: float = 0.12
+DF_CANNON_CD: float = 0.11
+DF_CANNON_YAW: float = 0.0
+DF_CANNON_PITCH: float = 0.0
+DF_CANNON_MIN_PITCH: float = -30.0
+DF_CANNON_MAX_PITCH: float = 60.0
+DF_CANNON_MAX_LENGTH: int = 128  # not in Cannon(), but related.
 
 # DEFAULT: TARGET_POS
-default_target_pos: Vector = Vector(6, 7, 8)
+DF_TARGET_POS: Vector = Vector(6, 7, 8)
 
 # DEFAULT: RADAR
-df_radar_pos: Vector = default_target_pos
-df_radar_range: int = 123
-df_radar_scan_rate: int = 1
-df_radar_drop_rate: float = 0.2
+DF_RADAR_POS: Vector = DF_TARGET_POS
+DF_RADAR_RANGE: int = 123
+DF_RADAR_SCAN_RATE: int = 1
+DF_RADAR_DROP_RATE: float = 0.2
 
 # DEFAULT: ESTIMATOR
 # default cd and g are reused from cannon
-df_assumed_velocity_range: tuple[int, int] = (10, 100)
-df_max_assumed_velocity: int = 1000
+DF_ASSUMED_VELOCITY_RANGE: tuple[int, int] = (10, 100)
+DF_MAX_ASSUMED_VELOCITY: int = 1000
 
 # DEFAULT: ENVIRONMENT
-df_max_environment_size: int = 1500
+DF_MAX_ENVIRONMENT_SIZE: int = 1500
 
 # DEFAULT: MISC
-df_fire_at_target: bool = True
-df_trajectory_type: str = "high"  # "low" or "high"
-df_perform_estimation: bool = True
+DF_FIRE_AT_TARGET: bool = True
+DF_TRAJECTORY_TYPE: str = "high"  # "low" or "high"
+DF_PERFORM_ESTIMATION: bool = True
 
 # INITIAL: CANNON
 cannon: Cannon = Cannon(
-    df_cannon_pos,
-    df_cannon_velocity,
-    df_cannon_length,
-    df_cannon_g,
-    df_cannon_cd,
-    df_cannon_yaw,
-    df_cannon_pitch,
-    df_cannon_min_pitch,
-    df_cannon_max_pitch,
+    DF_CANNON_POS,
+    DF_CANNON_VELOCITY,
+    DF_CANNON_LENGTH,
+    DF_CANNON_G,
+    DF_CANNON_CD,
+    DF_CANNON_YAW,
+    DF_CANNON_PITCH,
+    DF_CANNON_MIN_PITCH,
+    DF_CANNON_MAX_PITCH,
 )
 
 # INITIAL: TARGET_POS
-target_pos: Vector = default_target_pos
+target_pos: Vector = DF_TARGET_POS
 
 # INITIAL: RADAR
 radar: Radar = Radar(
-    df_radar_pos,
-    df_radar_range,
-    df_radar_scan_rate,
-    df_radar_drop_rate,
+    DF_RADAR_POS,
+    DF_RADAR_RANGE,
+    DF_RADAR_SCAN_RATE,
+    DF_RADAR_DROP_RATE,
 )
 
 # INITIAL: ESTIMATOR
-assumed_velocity_range: tuple[int, int] = df_assumed_velocity_range
+assumed_velocity_range: tuple[int, int] = DF_ASSUMED_VELOCITY_RANGE
 
 # INITIAL: ENVIRONMENT
 environment_shape: dict[str, tuple[int, int]] = dict(
-    x=(-df_max_environment_size, df_max_environment_size),
-    y=(-df_max_environment_size, df_max_environment_size),
-    z=(-df_max_environment_size, df_max_environment_size),
+    x=(-DF_MAX_ENVIRONMENT_SIZE, DF_MAX_ENVIRONMENT_SIZE),
+    y=(-DF_MAX_ENVIRONMENT_SIZE, DF_MAX_ENVIRONMENT_SIZE),
+    z=(-DF_MAX_ENVIRONMENT_SIZE, DF_MAX_ENVIRONMENT_SIZE),
 )
 
 # INITIAL: MISC
-fire_at_target: bool = df_fire_at_target
-trajectory_type: str = df_trajectory_type
-perform_estimation: bool = df_perform_estimation
+fire_at_target: bool = DF_FIRE_AT_TARGET
+trajectory_type: str = DF_TRAJECTORY_TYPE
+perform_estimation: bool = DF_PERFORM_ESTIMATION
 
 
 def center_text(columns, texts):
@@ -89,7 +89,7 @@ def center_text(columns, texts):
         col.markdown(f'<div class="centered-text">{text}</div>', unsafe_allow_html=True)
 
 
-def sb_clc_target():
+def set_clc_target():
     st.text("Target")
     with st.container(border=True):
         col = st.columns(3)
@@ -120,7 +120,7 @@ def sb_clc_target():
         )
 
 
-def sb_clc_cannon():
+def set_clc_cannon():
     st.text("Cannon")
     with st.container(border=True):
         col = st.columns(3)
@@ -154,15 +154,15 @@ def sb_clc_cannon():
             value=cannon.v_ms,
             min_value=1,
             step=10,
-            placeholder=f"{df_cannon_velocity}",
+            placeholder=f"{DF_CANNON_VELOCITY}",
             help="For big cannons, 1 charge is +40 m/s.",
         )
         st.number_input(
             "Cannon length",
             value=cannon.length,
             min_value=1,
-            max_value=df_cannon_max_length,
-            placeholder=f"{df_cannon_length}",
+            max_value=DF_CANNON_MAX_LENGTH,
+            placeholder=f"{DF_CANNON_LENGTH}",
             help="24 is max nethersteel big cannon length.",
         )
         st.select_slider(
@@ -186,8 +186,8 @@ def sb_clc_cannon():
             min_value=0.0,
             max_value=1.0,
             step=0.01,
-            placeholder=f"{df_cannon_cd}",
-            help=f"{df_cannon_cd} for big cannons.",
+            placeholder=f"{DF_CANNON_CD}",
+            help=f"{DF_CANNON_CD} for big cannons.",
         )
         st.number_input(
             "Gravity",
@@ -195,8 +195,8 @@ def sb_clc_cannon():
             min_value=0.0,
             max_value=1.0,
             step=0.01,
-            placeholder=f"{df_cannon_g}",
-            help=f"{df_cannon_g} for big cannons.",
+            placeholder=f"{DF_CANNON_G}",
+            help=f"{DF_CANNON_G} for big cannons.",
         )
         st.toggle(
             "Fire at target",
@@ -209,7 +209,7 @@ def sb_clc_cannon():
             min_value=-180.0,
             max_value=180.0,
             step=0.1,
-            placeholder=f"{df_cannon_yaw}",
+            placeholder=f"{DF_CANNON_YAW}",
             disabled=not fire_at_target,
             help="-180 to 180",
         )
@@ -219,13 +219,13 @@ def sb_clc_cannon():
             min_value=-90.0,
             max_value=90.0,
             step=0.1,
-            placeholder=f"{df_cannon_pitch}",
+            placeholder=f"{DF_CANNON_PITCH}",
             disabled=not fire_at_target,
             help="-90 (down) to +90 (up).",
         )
 
 
-def sb_rev_cannon(disable: bool):
+def set_rev_cannon(disable: bool):
     st.text(
         "Assumed cannon stats",
         help="If known, highly recommend to set these. It will improve estimator consistency massively.",
@@ -237,8 +237,8 @@ def sb_rev_cannon(disable: bool):
             min_value=0.0,
             max_value=1.0,
             step=0.01,
-            placeholder=f"{df_cannon_cd}",
-            help=f"{df_cannon_cd} for big cannons.",
+            placeholder=f"{DF_CANNON_CD}",
+            help=f"{DF_CANNON_CD} for big cannons.",
             disabled=disable,
         )
         st.number_input(
@@ -247,22 +247,22 @@ def sb_rev_cannon(disable: bool):
             min_value=0.0,
             max_value=1.0,
             step=0.01,
-            placeholder=f"{df_cannon_g}",
-            help=f"{df_cannon_g} for big cannons.",
+            placeholder=f"{DF_CANNON_G}",
+            help=f"{DF_CANNON_G} for big cannons.",
             disabled=disable,
         )
         st.slider(
             "Velocity range (m/s)",
             value=assumed_velocity_range,
             min_value=1,
-            max_value=df_max_assumed_velocity,
+            max_value=DF_MAX_ASSUMED_VELOCITY,
             step=1,
-            help=f"{df_assumed_velocity_range} for big cannons, helps estimator prune bogus results.",
+            help=f"{DF_ASSUMED_VELOCITY_RANGE} for big cannons, helps estimator prune bogus results.",
             disabled=disable,
         )
 
 
-def sb_rev_radar(disable: bool):
+def set_rev_radar(disable: bool):
     st.text("Radar")
     with st.container(border=True):
         cl = st.columns(3)
@@ -303,7 +303,7 @@ def sb_rev_radar(disable: bool):
             min_value=1,
             # max_value should be min of absolute val of all area vals... a pain.
             step=1,
-            placeholder=f"{df_radar_range}",
+            placeholder=f"{DF_RADAR_RANGE}",
             help="Radar scan radius in blocks.",
             disabled=disable,
         )
@@ -312,7 +312,7 @@ def sb_rev_radar(disable: bool):
             value=radar.scan_rate,
             min_value=1,
             step=1,
-            placeholder=f"{df_radar_scan_rate}",
+            placeholder=f"{DF_RADAR_SCAN_RATE}",
             help="The radar scans once every N ticks.",
             disabled=disable,
         )
@@ -322,36 +322,36 @@ def sb_rev_radar(disable: bool):
             min_value=0.0,
             max_value=1.0,
             step=0.05,
-            placeholder=f"{df_radar_drop_rate}",
+            placeholder=f"{DF_RADAR_DROP_RATE}",
             help="Proportion of skipped observations to simulate lag.",
             disabled=disable,
         )
 
 
-def sb_environment():
+def set_environment():
     st.text("Maximum size", help="Usually there's no need to touch this.")
     with st.container(border=True):
         st.slider(
             "X",
             value=environment_shape["x"],
-            min_value=-df_max_environment_size,
-            max_value=df_max_environment_size,
+            min_value=-DF_MAX_ENVIRONMENT_SIZE,
+            max_value=DF_MAX_ENVIRONMENT_SIZE,
         )
         st.slider(
             "Y",
             value=environment_shape["y"],
-            min_value=-df_max_environment_size,
-            max_value=df_max_environment_size,
+            min_value=-DF_MAX_ENVIRONMENT_SIZE,
+            max_value=DF_MAX_ENVIRONMENT_SIZE,
         )
         st.slider(
             "Z",
             value=environment_shape["z"],
-            min_value=-df_max_environment_size,
-            max_value=df_max_environment_size,
+            min_value=-DF_MAX_ENVIRONMENT_SIZE,
+            max_value=DF_MAX_ENVIRONMENT_SIZE,
         )
 
 
-def sb_credits():
+def set_credits():
     cl = st.columns([0.3, 0.4, 0.3], gap=None)
     cl[0].text("Made with ❤️")
     cl[1].markdown(
@@ -365,8 +365,8 @@ def sb_credits():
 def sidebar():
     with st.sidebar:
         with st.expander("Calculator", expanded=False):
-            sb_clc_target()
-            sb_clc_cannon()
+            set_clc_target()
+            set_clc_cannon()
 
         with st.expander("Reverse calculator"):
             st.toggle(
@@ -380,35 +380,103 @@ def sidebar():
                 help="Radar drop rate involves randomness and you can get unlucky, causing the estimator to fail.",
                 disabled=not perform_estimation,
             )
-            sb_rev_cannon(not perform_estimation)
-            sb_rev_radar(not perform_estimation)
+            set_rev_cannon(not perform_estimation)
+            set_rev_radar(not perform_estimation)
 
         with st.expander("Environment", expanded=False):
-            sb_environment()
+            set_environment()
 
-        sb_credits()
+        set_credits()
 
 
 def plot(fig):
     theme = None if st.context.theme.type == "light" else "streamlit"
-    with st.container(border=True, gap=None):
-        st.plotly_chart(fig, use_container_width=True, theme=theme)
-        if theme is not None:
-            st.toast("Apologies for the ugly dark plot theme.", duration="short")
+    st.plotly_chart(fig, use_container_width=True, theme=theme)
+    if theme is not None:
+        st.toast("Apologies for the ugly dark plot theme.", duration="short")
 
 
-def rs_cannon():
-    st.write("Cannon")
+def rs_cannon(stats):
+    st.text("Cannon")
+
+    # I hate this.
+    yaw = safe_extract("yaw", stats)
+    pitch = safe_extract("pitch", stats)
+    flight_time = safe_extract("flight_time", stats)
+    muzzle_pos = safe_extract("muzzle_pos", stats)
+    impact_pos = safe_extract("impact_pos", stats)
+    error_impact = safe_extract("error_impact", stats)
+
+    yaw = round(yaw, 2) if yaw is not None else None
+    pitch = round(pitch, 2) if pitch is not None else None
+    muzzle_pos = muzzle_pos.round().tostring() if muzzle_pos is not None else None
+    impact_pos = impact_pos.round().tostring() if impact_pos is not None else None
+    error_impact = round(error_impact, 2) if error_impact is not None else None
+
+    data = {
+        "Yaw": yaw,
+        "Pitch": pitch,
+        "Shell flight time": flight_time,
+        "Muzzle position": muzzle_pos,
+        "Impact position": impact_pos,
+        "Impact to target error": error_impact,
+    }
+    for key in data:
+        if data[key] is None:
+            data[key] = "N/A"
+
+    st.table(data=data)
 
 
-def rs_reverse():
-    st.write("Estimator")
+def rs_reverse(stats):
+    st.text("Estimator", help="These values are derived from samples obtained by radar.")
+
+    # I still hate this.
+    n_obs = safe_extract("n_obs", stats)
+    est_muzzle_pos = safe_extract("est_muzzle_pos", stats)
+    est_v_ms = safe_extract("est_v_ms", stats)
+    est_g = safe_extract("est_g", stats)
+    est_c_d = safe_extract("est_c_d", stats)
+    est_yaw = safe_extract("est_yaw", stats)
+    est_pitch = safe_extract("est_pitch", stats)
+    error_est_muzzle_pos = safe_extract("error_est_muzzle_pos", stats)
+
+    est_muzzle_pos = (
+        est_muzzle_pos.round().tostring() if est_muzzle_pos is not None else None
+    )
+    est_yaw = round(est_yaw, 2) if est_yaw is not None else None
+    est_pitch = round(est_pitch, 2) if est_pitch is not None else None
+    error_est_muzzle_pos = (
+        round(error_est_muzzle_pos, 2) if error_est_muzzle_pos is not None else None
+    )
+
+    data = dict(
+        n_obs=n_obs,
+        est_muzzle_pos=est_muzzle_pos,
+        est_v_ms=est_v_ms,
+        est_g=est_g,
+        est_c_d=est_c_d,
+        est_yaw=est_yaw,
+        est_pitch=est_pitch,
+        error_est_muzzle_pos=error_est_muzzle_pos,
+    )
+    data = {
+        "\# of observations": n_obs,
+        "Muzzle position": est_muzzle_pos,
+        "Shell velocity": est_v_ms,
+        "Gravity": est_g,
+        "Drag coefficient": est_c_d,
+        "Yaw": est_yaw,
+        "Pitch": est_pitch,
+        "Muzzle position error": error_est_muzzle_pos,
+    }
+    for key in data:
+        if data[key] is None:
+            data[key] = "N/A"
+
+    st.table(data=data)
 
 
-def results():
-    with st.expander("Results", True):
-        c1, c2 = st.columns(2, border=True)
-        with c1:
-            rs_cannon()
-        with c2:
-            rs_reverse()
+def results(stats):
+    rs_cannon(stats)
+    rs_reverse(stats)
