@@ -1,5 +1,6 @@
 import streamlit as st
 
+from lib.constr import *
 from lib.plotting import *
 from lib.simulation import *
 from lib.ui import *
@@ -34,23 +35,9 @@ st.markdown(
 
 
 @st.fragment
-def get_stats():
-    return perform_simulation(
-        cannon=st.session_state["cannon"],
-        target_pos=st.session_state["target_pos"],
-        fire_at_target=st.session_state["fire_at_target"],
-        trajectory_type=st.session_state["trajectory_type"],
-        perform_estimation=st.session_state["perform_estimation"],
-        radar=st.session_state["radar"],
-        assumed_cd=st.session_state["assumed_c_d"],
-        assumed_g=st.session_state["assumed_g"],
-        assumed_v_ms_range=st.session_state["assumed_velocity_range"],
-    )
-
-@st.fragment
 def generate_fig(stats):
     return populate_plot(
-        fig=init_plot(st.session_state["environment_shape"], height=600),
+        fig=init_plot(DF_MAX_ENVIRONMENT_SIZE, height=600),
         cannon=st.session_state["cannon"],
         target_pos=st.session_state["target_pos"],
         radar=st.session_state["radar"],
@@ -60,13 +47,22 @@ def generate_fig(stats):
 
 sidebar()
 t1, t2, t3 = st.tabs(["Plot", "Results", "Debug"])
-stats = get_stats()
+st.session_state["stats"] = perform_simulation(
+    cannon=st.session_state["cannon"],
+    target_pos=st.session_state["target_pos"],
+    fire_at_target=st.session_state["fire_at_target"],
+    trajectory_type=st.session_state["trajectory_type"],
+    perform_estimation=st.session_state["perform_estimation"],
+    radar=st.session_state["radar"],
+    assumed_cd=st.session_state["assumed_c_d"],
+    assumed_g=st.session_state["assumed_g"],
+    assumed_v_ms_range=st.session_state["assumed_velocity_range"],
+)
 with t1:
-    plot(generate_fig(stats))
+    plot(generate_fig(st.session_state["stats"]))
 with t2:
-    results(stats)
+    results(st.session_state["stats"])
 with t3:
     st.write(st.session_state)
 
-# TODO: perform caching and session state and/or fragment
-# TODO: fix yaw (urgent) inconsistency
+# TODO: fix yaw inconsistency

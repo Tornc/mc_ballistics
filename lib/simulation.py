@@ -1,5 +1,6 @@
 import math
 import random
+import streamlit as st
 from collections import Counter
 from dataclasses import dataclass
 from time import time
@@ -225,7 +226,7 @@ CDG_DIGITS = 5
 ACCEPTABLE_RMSE = 1e-3
 
 
-# TODO: maybe sec2tick here is a bad idea, because information might be lost.
+# NOTE: maybe sec2tick here is a bad idea, because information might be lost.
 def compute_obs_velocities(
     datapoints: list[tuple[float, Vector]],
 ) -> list[tuple[int, Vector]]:
@@ -406,7 +407,6 @@ def compute_rmse(
     return math.sqrt(err / n)
 
 
-# TODO: clean everything up
 @timed_function
 def estimate_muzzle(
     partial_trajectory: list[tuple[float, Vector]],
@@ -476,6 +476,7 @@ def estimate_muzzle(
     return best["stats"]
 
 
+@st.fragment
 def perform_simulation(
     cannon: Cannon,
     target_pos: Vector,
@@ -529,7 +530,7 @@ def perform_simulation(
 
     results.update(dict(observed_trajectory=observed_trajectory))
 
-    # TODO: this will go to inf if muzzle is PAST target! 
+    # TODO: this will go to inf if muzzle is PAST target!  (i think)
     stats = estimate_muzzle(
         partial_trajectory=observed_trajectory,
         v_ms_range=assumed_v_ms_range,

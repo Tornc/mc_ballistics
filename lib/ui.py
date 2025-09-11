@@ -1,7 +1,7 @@
 import streamlit as st
 
-# TODO: ALL TEMP; use session state later
 from lib.constr import *
+from lib.simulation import perform_simulation
 from lib.utils import safe_extract
 
 
@@ -10,7 +10,7 @@ def center_text(columns, texts):
         col.markdown(f'<div class="centered-text">{text}</div>', unsafe_allow_html=True)
 
 
-def set_clc_target():
+def sett_clc_target():
     st.text("Target")
     with st.container(border=True):
         col = st.columns(3)
@@ -18,30 +18,30 @@ def set_clc_target():
         st.session_state["target_pos"].x = col[0].number_input(
             "",
             value=st.session_state["target_pos"].x,
-            min_value=st.session_state["environment_shape"]["x"][0],
-            max_value=st.session_state["environment_shape"]["x"][1],
+            min_value=-DF_MAX_ENVIRONMENT_SIZE,
+            max_value=DF_MAX_ENVIRONMENT_SIZE,
             key="x_target",
             label_visibility="collapsed",
         )
         st.session_state["target_pos"].y = col[1].number_input(
             "",
             value=st.session_state["target_pos"].y,
-            min_value=st.session_state["environment_shape"]["y"][0],
-            max_value=st.session_state["environment_shape"]["y"][1],
+            min_value=-DF_MAX_ENVIRONMENT_SIZE,
+            max_value=DF_MAX_ENVIRONMENT_SIZE,
             key="y_target",
             label_visibility="collapsed",
         )
         st.session_state["target_pos"].z = col[2].number_input(
             "",
             value=st.session_state["target_pos"].z,
-            min_value=st.session_state["environment_shape"]["z"][0],
-            max_value=st.session_state["environment_shape"]["z"][1],
+            min_value=-DF_MAX_ENVIRONMENT_SIZE,
+            max_value=DF_MAX_ENVIRONMENT_SIZE,
             key="z_target",
             label_visibility="collapsed",
         )
 
 
-def set_clc_cannon():
+def sett_clc_cannon():
     st.text("Cannon")
     with st.container(border=True):
         col = st.columns(3)
@@ -49,24 +49,24 @@ def set_clc_cannon():
         st.session_state["cannon"].pos.x = col[0].number_input(
             "",
             value=st.session_state["cannon"].pos.x,
-            min_value=st.session_state["environment_shape"]["x"][0],
-            max_value=st.session_state["environment_shape"]["x"][1],
+            min_value=-DF_MAX_ENVIRONMENT_SIZE,
+            max_value=DF_MAX_ENVIRONMENT_SIZE,
             key="x_cannon",
             label_visibility="collapsed",
         )
         st.session_state["cannon"].pos.y = col[1].number_input(
             "",
             value=st.session_state["cannon"].pos.y,
-            min_value=st.session_state["environment_shape"]["y"][0],
-            max_value=st.session_state["environment_shape"]["y"][1],
+            min_value=-DF_MAX_ENVIRONMENT_SIZE,
+            max_value=DF_MAX_ENVIRONMENT_SIZE,
             key="y_cannon",
             label_visibility="collapsed",
         )
         st.session_state["cannon"].pos.z = col[2].number_input(
             "",
             value=st.session_state["cannon"].pos.z,
-            min_value=st.session_state["environment_shape"]["z"][0],
-            max_value=st.session_state["environment_shape"]["z"][1],
+            min_value=-DF_MAX_ENVIRONMENT_SIZE,
+            max_value=DF_MAX_ENVIRONMENT_SIZE,
             key="z_cannon",
             label_visibility="collapsed",
         )
@@ -124,9 +124,9 @@ def set_clc_cannon():
             placeholder=f"{DF_CANNON_G}",
             help=f"{DF_CANNON_G} for big cannons.",
         )
-        st.session_state["fire_at_target"] = st.toggle(
+        st.toggle(
             "Fire at target",
-            value=st.session_state["fire_at_target"],
+            key="fire_at_target",
             help="Disable if you want to manually fire at ... somewhere.",
         )
         st.session_state["cannon"].yaw = st.number_input(
@@ -151,15 +151,16 @@ def set_clc_cannon():
         )
 
 
-def set_rev_cannon(disable: bool):
+def sett_rev_cannon(disable: bool):
     st.text(
         "Assumed cannon stats",
         help="If known, highly recommend to set these. It will improve estimator consistency massively.",
     )
     with st.container(border=True, gap=None):
-        st.session_state["assumed_c_d"] = st.number_input(
-            "Drag coefficient",
-            value=st.session_state["assumed_c_d"],
+        st.number_input(
+            key="assumed_c_d",
+            label="Drag coefficient",
+            value=None,
             min_value=0.0,
             max_value=1.0,
             step=0.01,
@@ -167,9 +168,10 @@ def set_rev_cannon(disable: bool):
             help=f"{DF_CANNON_CD} for big cannons.",
             disabled=disable,
         )
-        st.session_state["assumed_g"] = st.number_input(
-            "Gravity",
-            value=st.session_state["assumed_g"],
+        st.number_input(
+            key="assumed_g",
+            label="Gravity",
+            value=None,
             min_value=0.0,
             max_value=1.0,
             step=0.01,
@@ -177,9 +179,9 @@ def set_rev_cannon(disable: bool):
             help=f"{DF_CANNON_G} for big cannons.",
             disabled=disable,
         )
-        st.session_state["assumed_velocity_range"] = st.slider(
-            "Velocity range (m/s)",
-            value=st.session_state["assumed_velocity_range"],
+        st.slider(
+            key="assumed_velocity_range",
+            label="Velocity range (m/s)",
             min_value=1,
             max_value=DF_MAX_ASSUMED_VELOCITY,
             step=1,
@@ -188,41 +190,63 @@ def set_rev_cannon(disable: bool):
         )
 
 
-def set_rev_radar(disable: bool):
+# TODO: can we remove this?
+def update_radar_pos():
+    st.session_state["radar"].pos = Vector(
+        (
+            st.session_state["target_pos"].x
+            if st.session_state["radar_pos_x"] is None
+            else st.session_state["radar_pos_x"]
+        ),
+        (
+            st.session_state["target_pos"].y
+            if st.session_state["radar_pos_y"] is None
+            else st.session_state["radar_pos_y"]
+        ),
+        (
+            st.session_state["target_pos"].z
+            if st.session_state["radar_pos_z"] is None
+            else st.session_state["radar_pos_z"]
+        ),
+    )
+
+
+def sett_rev_radar(disable: bool):
     st.text("Radar")
     with st.container(border=True):
         cl = st.columns(3)
         center_text(cl, ["X", "Y", "Z"])
-        st.session_state["radar"].pos.x = cl[0].number_input(
-            "",
-            value=st.session_state["radar"].pos.x,
-            min_value=st.session_state["environment_shape"]["x"][0],
-            max_value=st.session_state["environment_shape"]["x"][1],
+        cl[0].number_input(
+            key="radar_pos_x",
+            label="",
+            value=None,
+            min_value=-DF_MAX_ENVIRONMENT_SIZE,
+            max_value=DF_MAX_ENVIRONMENT_SIZE,
             placeholder=f"{st.session_state["target_pos"].x}",
-            key="x_radar",
             label_visibility="collapsed",
             disabled=disable,
         )
-        st.session_state["radar"].pos.y = cl[1].number_input(
-            "",
-            value=st.session_state["radar"].pos.y,
-            min_value=st.session_state["environment_shape"]["y"][0],
-            max_value=st.session_state["environment_shape"]["y"][1],
+        cl[1].number_input(
+            key="radar_pos_y",
+            label="",
+            value=None,
+            min_value=-DF_MAX_ENVIRONMENT_SIZE,
+            max_value=DF_MAX_ENVIRONMENT_SIZE,
             placeholder=f"{st.session_state["target_pos"].y}",
-            key="y_radar",
             label_visibility="collapsed",
             disabled=disable,
         )
-        st.session_state["radar"].pos.z = cl[2].number_input(
-            "",
-            value=st.session_state["radar"].pos.z,
-            min_value=st.session_state["environment_shape"]["z"][0],
-            max_value=st.session_state["environment_shape"]["z"][1],
+        cl[2].number_input(
+            key="radar_pos_z",
+            label="",
+            value=None,
+            min_value=-DF_MAX_ENVIRONMENT_SIZE,
+            max_value=DF_MAX_ENVIRONMENT_SIZE,
             placeholder=f"{st.session_state["target_pos"].z}",
-            key="z_radar",
             label_visibility="collapsed",
             disabled=disable,
         )
+        update_radar_pos()
         st.session_state["radar"].range = st.number_input(
             "Range",
             value=st.session_state["radar"].range,
@@ -254,30 +278,7 @@ def set_rev_radar(disable: bool):
         )
 
 
-# def set_environment():
-#     st.text("Maximum size", help="Usually there's no need to touch this.")
-#     with st.container(border=True):
-#         st.session_state["environment_shape"]["x"] = st.slider(
-#             "X",
-#             value=st.session_state["environment_shape"]["x"],
-#             min_value=-DF_MAX_ENVIRONMENT_SIZE,
-#             max_value=DF_MAX_ENVIRONMENT_SIZE,
-#         )
-#         st.session_state["environment_shape"]["y"] = st.slider(
-#             "Y",
-#             value=st.session_state["environment_shape"]["y"],
-#             min_value=-DF_MAX_ENVIRONMENT_SIZE,
-#             max_value=DF_MAX_ENVIRONMENT_SIZE,
-#         )
-#         st.session_state["environment_shape"]["z"] = st.slider(
-#             "Z",
-#             value=st.session_state["environment_shape"]["z"],
-#             min_value=-DF_MAX_ENVIRONMENT_SIZE,
-#             max_value=DF_MAX_ENVIRONMENT_SIZE,
-#         )
-
-
-def set_credits():
+def sett_credits():
     cl = st.columns([0.3, 0.4, 0.3], gap=None)
     cl[0].text("Made with ❤️")
     cl[1].markdown(
@@ -291,38 +292,45 @@ def set_credits():
 def sidebar():
     with st.sidebar:
         with st.expander("Calculator", expanded=False):
-            set_clc_target()
-            set_clc_cannon()
+            sett_clc_target()
+            sett_clc_cannon()
 
         with st.expander("Reverse calculator"):
-            st.session_state["perform_estimation"] = st.toggle(
+            st.toggle(
                 "Estimate muzzle",
-                value=st.session_state["perform_estimation"],
+                key="perform_estimation",
                 help="Disabling this causes the settings below to have no impact.",
             )
-            # TODO: implement!!!
-            st.button(
-                "Reroll observations TODO: implement",
+            do_reroll = st.button(
+                "Reroll observations",
                 icon="🔃",
                 help="Radar drop rate involves randomness and you can get unlucky, causing the estimator to fail.",
                 disabled=not st.session_state["perform_estimation"],
             )
-            set_rev_cannon(not st.session_state["perform_estimation"])
-            set_rev_radar(not st.session_state["perform_estimation"])
+            if do_reroll:
+                st.session_state["stats"] = perform_simulation(
+                    cannon=st.session_state["cannon"],
+                    target_pos=st.session_state["target_pos"],
+                    fire_at_target=st.session_state["fire_at_target"],
+                    trajectory_type=st.session_state["trajectory_type"],
+                    perform_estimation=st.session_state["perform_estimation"],
+                    radar=st.session_state["radar"],
+                    assumed_cd=st.session_state["assumed_c_d"],
+                    assumed_g=st.session_state["assumed_g"],
+                    assumed_v_ms_range=st.session_state["assumed_velocity_range"],
+                )
+            sett_rev_cannon(not st.session_state["perform_estimation"])
+            sett_rev_radar(not st.session_state["perform_estimation"])
 
-        # with st.expander("Environment", expanded=False):
-        #     set_environment()
-
-        set_credits()
+        sett_credits()
 
 
 def plot(fig):
-    # TODO: better night theme
     theme = None if st.context.theme.type == "light" else "streamlit"
     st.plotly_chart(fig, use_container_width=True, theme=theme)
 
 
-def rs_cannon(stats):
+def res_cannon(stats):
     st.text("Cannon")
 
     # I hate this.
@@ -354,7 +362,7 @@ def rs_cannon(stats):
     st.table(data=data)
 
 
-def rs_reverse(stats):
+def res_reverse(stats):
     st.text(
         "Estimator", help="These values are derived from samples obtained by radar."
     )
@@ -406,5 +414,8 @@ def rs_reverse(stats):
 
 
 def results(stats):
-    rs_cannon(stats)
-    rs_reverse(stats)
+    res_cannon(stats)
+    res_reverse(stats)
+
+
+# TODO: use callbacks or key= instead of changing directly (it's way faster & smoother)

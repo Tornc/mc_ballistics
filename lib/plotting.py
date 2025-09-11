@@ -55,7 +55,7 @@ def add_hemisphere(fig: go.Figure, pos: Vector, radius: float, name: str | None 
     )
 
 
-def ax_style(rng: tuple[int]):
+def ax_style(size):
     return dict(
         showbackground=False,
         zeroline=True,
@@ -63,23 +63,23 @@ def ax_style(rng: tuple[int]):
         zerolinewidth=4,
         zerolinecolor="grey",
         gridcolor="LightGrey",
-        minallowed=rng[0],
-        maxallowed=rng[1],
+        minallowed=-size,
+        maxallowed=size,
     )
 
 
-def init_plot(area: dict, width: int = None, height: int = None):
+def init_plot(size: int, width: int = None, height: int = None):
     fig = go.Figure()
     fig.update_layout(
         width=width,
         height=height,
         margin=dict(l=0, r=0, t=0, b=0),
-        # paper_bgcolor="#000000", # TODO: night mode; adjust text and line colours.
+        # paper_bgcolor="#000000", Night mode maybe.
         scene=dict(
             # intentional axis swapping
-            xaxis=ax_style(area["x"]),
-            yaxis=ax_style(area["z"]),
-            zaxis=ax_style(area["y"]),
+            xaxis=ax_style(size),
+            yaxis=ax_style(size),
+            zaxis=ax_style(size),
             aspectmode="data",
             xaxis_title="X",
             yaxis_title="Z",
@@ -116,5 +116,5 @@ def populate_plot(fig, cannon: Cannon, target_pos: Vector, radar: Radar, stats: 
         )
     if "est_muzzle_pos" in stats:
         add_trace(fig, stats["est_muzzle_pos"], "markers+text", "Muzzle (estimate)")
-    
+
     return fig

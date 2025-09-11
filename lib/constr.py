@@ -21,7 +21,7 @@ DF_CANNON_MAX_LENGTH: int = 128  # not in Cannon(), but related.
 DF_TARGET_POS: Vector = Vector(800, 10, 340)
 
 # DEFAULT: RADAR
-DF_RADAR_POS: Vector = DF_TARGET_POS.copy()
+DF_RADAR_POS: Vector = DF_TARGET_POS
 DF_RADAR_RANGE: int = 250
 DF_RADAR_SCAN_RATE: int = 1
 DF_RADAR_DROP_RATE: float = 0.2
@@ -74,25 +74,21 @@ st.session_state["radar"] = (
         DF_RADAR_DROP_RATE,
     )
 )
+st.session_state["radar_pos_x"] = st.session_state["radar_pos_x"] if "radar_pos_x" in st.session_state else None
+st.session_state["radar_pos_y"] = st.session_state["radar_pos_y"] if "radar_pos_y" in st.session_state else None
+st.session_state["radar_pos_z"] = st.session_state["radar_pos_z"] if "radar_pos_z" in st.session_state else None
 
 # INITIAL: ESTIMATOR
-st.session_state["assumed_c_d"] = st.session_state["assumed_c_d"] if "assumed_c_d" in st.session_state else None
-st.session_state["assumed_g"] = st.session_state["assumed_g"] if "assumed_g" in st.session_state else None
+st.session_state["assumed_c_d"] = (
+    st.session_state["assumed_c_d"] if "assumed_c_d" in st.session_state else None
+)
+st.session_state["assumed_g"] = (
+    st.session_state["assumed_g"] if "assumed_g" in st.session_state else None
+)
 st.session_state["assumed_velocity_range"] = (
     st.session_state["assumed_velocity_range"]
     if "assumed_velocity_range" in st.session_state
     else DF_ASSUMED_VELOCITY_RANGE
-)
-
-# INITIAL: ENVIRONMENT
-st.session_state["environment_shape"] = (
-    st.session_state["environment_shape"]
-    if "environment_shape" in st.session_state
-    else dict(
-        x=(-DF_MAX_ENVIRONMENT_SIZE, DF_MAX_ENVIRONMENT_SIZE),
-        y=(-DF_MAX_ENVIRONMENT_SIZE, DF_MAX_ENVIRONMENT_SIZE),
-        z=(-DF_MAX_ENVIRONMENT_SIZE, DF_MAX_ENVIRONMENT_SIZE),
-    )
 )
 
 # INITIAL: MISC
@@ -111,3 +107,8 @@ st.session_state["perform_estimation"] = (
     if "perform_estimation" in st.session_state
     else DF_PERFORM_ESTIMATION
 )
+
+
+# INITIAL: STATE
+
+st.session_state["stats"] = None
