@@ -1,12 +1,8 @@
-import cython as c
-import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
 
 from lib.plotting import *
 from lib.simulation import *
-from lib.ui import sidebar, plot, results
+from lib.ui import *
 from lib.utils import *
 
 ICON_PATH = "./assets/img/icon.ico"

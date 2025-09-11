@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import dataclass
 from time import time
 
-from lib.utils import Vector, sec2tick, tick2sec, timed_function
+from lib.utils import *
 
 
 @dataclass
