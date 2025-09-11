@@ -437,7 +437,6 @@ def estimate_muzzle(
     t0 = partial_trajectory[0][0]
     offsets = [sec2tick(t - t0) for t, _ in partial_trajectory]
 
-    # best = {"rmse": float("inf"), "muzzle": None, "params": None}
     best = dict(rmse=float("inf"), stats=None)
     for s in range(0, max_s):
         muzzle_pos, v0 = backpropagate(partial_trajectory[0][1], v_curr, s, c_d, g)
@@ -499,8 +498,9 @@ def perform_simulation(
             cannon, target_pos, trajectory_type == "low"
         )
         if yaw is not None and pitch is not None and t is not None:
-            cannon.yaw, cannon.pitch, max_ticks = yaw, pitch, round(t)
-            trajectory = simulate_trajectory(cannon, max_ticks=max_ticks)
+            if pitch >= cannon.min_pitch and pitch <= cannon.max_pitch:
+                cannon.yaw, cannon.pitch, max_ticks = yaw, pitch, round(t)
+                trajectory = simulate_trajectory(cannon, max_ticks=max_ticks)
 
         results.update(dict(yaw=yaw, pitch=pitch))
 
@@ -529,6 +529,7 @@ def perform_simulation(
 
     results.update(dict(observed_trajectory=observed_trajectory))
 
+    # TODO: this will go to inf if muzzle is PAST target! 
     stats = estimate_muzzle(
         partial_trajectory=observed_trajectory,
         v_ms_range=assumed_v_ms_range,

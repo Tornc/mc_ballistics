@@ -32,29 +32,41 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-cannon = Cannon(Vector(50, 10, 80), 280, 24, 0.05, 0.99, 0, 0, -30.0, 60.0)
-radar = Radar(Vector(0, 0, 0), 250, 1, 0.0)
-target_pos = Vector(800, 10, 340)
-radar.pos = target_pos
 
-stats = perform_simulation(
-    cannon, target_pos, True, "high", True, radar, None, None, None
-)
+@st.fragment
+def get_stats():
+    return perform_simulation(
+        cannon=st.session_state["cannon"],
+        target_pos=st.session_state["target_pos"],
+        fire_at_target=st.session_state["fire_at_target"],
+        trajectory_type=st.session_state["trajectory_type"],
+        perform_estimation=st.session_state["perform_estimation"],
+        radar=st.session_state["radar"],
+        assumed_cd=st.session_state["assumed_c_d"],
+        assumed_g=st.session_state["assumed_g"],
+        assumed_v_ms_range=st.session_state["assumed_velocity_range"],
+    )
 
-env_dims = dict(x=(-1500, 1500), y=(-1500, 1500), z=(-1500, 1500))
-fig = init_plot(env_dims, height=600)
-fig = populate_plot(fig, cannon, target_pos, radar, stats)
+@st.fragment
+def generate_fig(stats):
+    return populate_plot(
+        fig=init_plot(st.session_state["environment_shape"], height=600),
+        cannon=st.session_state["cannon"],
+        target_pos=st.session_state["target_pos"],
+        radar=st.session_state["radar"],
+        stats=stats,
+    )
+
 
 sidebar()
-t1, t2 = st.tabs(["Plot", "Results"])
+t1, t2, t3 = st.tabs(["Plot", "Results", "Debug"])
+stats = get_stats()
 with t1:
-    plot(fig)
+    plot(generate_fig(stats))
 with t2:
     results(stats)
-
-
-# This is good for indicating failed observation or sth
-# st.toast("yo", icon=None, duration=3)
+with t3:
+    st.write(st.session_state)
 
 # TODO: perform caching and session state and/or fragment
 # TODO: fix yaw (urgent) inconsistency
