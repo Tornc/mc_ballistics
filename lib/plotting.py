@@ -1,7 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
-from lib.utils import Vector
 from lib.simulation import Cannon, Radar
+from lib.utils import Vector
 
 
 def add_trace(
