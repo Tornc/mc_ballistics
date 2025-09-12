@@ -29,7 +29,11 @@ DF_RADAR_SCAN_RATE: int = 2
 DF_RADAR_DROP_RATE: float = 0.2
 
 # DEFAULT: ESTIMATOR
-# default cd and g are reused from cannon
+# TODO: change this later. None is for testing purposes.
+# DF_ASSUMED_G = DF_CANNON_G
+# DF_ASSUMED_CD = DF_CANNON_CD
+DF_ASSUMED_G = None
+DF_ASSUMED_CD = None
 DF_ASSUMED_VELOCITY_RANGE: tuple[int, int] = (40, 320)
 DF_MAX_ASSUMED_VELOCITY: int = 1000
 
@@ -75,8 +79,8 @@ sset("radar_scan_rate", DF_RADAR_SCAN_RATE)
 sset("radar_drop_rate", DF_RADAR_DROP_RATE)
 
 # INITIAL: ESTIMATOR
-sset("assumed_cd", DF_CANNON_CD)
-sset("assumed_g", DF_CANNON_G)
+sset("assumed_cd", DF_ASSUMED_CD)
+sset("assumed_g", DF_ASSUMED_G)
 sset("assumed_velocity_range", DF_ASSUMED_VELOCITY_RANGE)
 
 # INITIAL: MISC

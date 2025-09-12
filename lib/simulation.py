@@ -182,16 +182,15 @@ def simulate_trajectory(
             vel = vel.mul(cannon.cd)
             vel.y -= cannon.g
 
-    # TODO: termination condition is wrong here
-    # NOTE: Cannon can be under or above target.
     if stop_y is not None:
-        # raise NotImplementedError
-        # for t in range(100000):  # Endless calculation protection.
-        for t in range(1000):
+        for t in range(100000):  # Endless calculation protection.
             trajectory.append((t, pos.copy()))
             pos = pos.add(vel)
             vel = vel.mul(cannon.cd)
             vel.y -= cannon.g
+            # We'll never reach, so quit.
+            if pos.y < stop_y and vel.y <= 0:
+                break
 
     return trajectory
 
