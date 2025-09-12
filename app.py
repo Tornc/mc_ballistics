@@ -8,13 +8,6 @@ from lib.utils import *
 
 ICON_PATH = "./assets/img/icon.ico"
 
-DEFAULT_CD = 0.11
-DEFAULT_G = 0.12
-DEFAULT_LENGTH = 12
-DEFAULT_VELOCITY = 120
-DEFAULT_MIN_VELOCITY = 40
-DEFAULT_MAX_VELOCITY = 320
-
 st.set_page_config(
     page_title="Ballistics Simulation",
     page_icon=ICON_PATH,
