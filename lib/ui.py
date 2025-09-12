@@ -243,7 +243,7 @@ def sett_rev_radar(disable: bool):
 
 
 def sett_credits():
-    cl = st.columns([0.3, 0.4, 0.3], gap=None)
+    cl = st.columns([0.3, 0.37, 0.25], gap=None)
     cl[0].text("Made with ❤️")
     cl[1].markdown(
         "[![GitHub](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/Tornc/mc_ballistics)"
@@ -336,41 +336,41 @@ def res_reverse():
     # I still hate this.
     n_obs = safe_extract("n_obs", stats)
     est_muzzle_pos = safe_extract("est_muzzle_pos", stats)
+    error_est_muzzle_pos = safe_extract("error_est_muzzle_pos", stats)
     est_v_ms = safe_extract("est_v_ms", stats)
     est_cd = safe_extract("est_cd", stats)
     est_g = safe_extract("est_g", stats)
     est_yaw = safe_extract("est_yaw", stats)
     est_pitch = safe_extract("est_pitch", stats)
-    error_est_muzzle_pos = safe_extract("error_est_muzzle_pos", stats)
 
     est_muzzle_pos = (
         est_muzzle_pos.round().tostring() if est_muzzle_pos is not None else None
     )
-    est_yaw = round(est_yaw, 2) if est_yaw is not None else None
-    est_pitch = round(est_pitch, 2) if est_pitch is not None else None
     error_est_muzzle_pos = (
         round(error_est_muzzle_pos, 2) if error_est_muzzle_pos is not None else None
     )
+    est_yaw = round(est_yaw, 2) if est_yaw is not None else None
+    est_pitch = round(est_pitch, 2) if est_pitch is not None else None
 
     data = dict(
         n_obs=n_obs,
         est_muzzle_pos=est_muzzle_pos,
+        error_est_muzzle_pos=error_est_muzzle_pos,
         est_v_ms=est_v_ms,
         est_cd=est_cd,
         est_g=est_g,
         est_yaw=est_yaw,
         est_pitch=est_pitch,
-        error_est_muzzle_pos=error_est_muzzle_pos,
     )
     data = {
         "\# of observations": n_obs,
         "Muzzle position": est_muzzle_pos,
+        "Muzzle position error": error_est_muzzle_pos,
         "Shell velocity": est_v_ms,
         "Drag coefficient": est_cd,
         "Gravity": est_g,
         "Yaw": est_yaw,
         "Pitch": est_pitch,
-        "Muzzle position error": error_est_muzzle_pos,
     }
     for key in data:
         if data[key] is None:
