@@ -1,6 +1,5 @@
 import numpy as np
 import plotly.graph_objects as go
-
 from lib.utils import Vector
 from lib.simulation import Cannon, Radar
 
@@ -95,14 +94,22 @@ def init_plot(size: int, width: int = None, height: int = None):
     return fig
 
 
-def populate_plot(fig, cannon: Cannon, target_pos: Vector, radar: Radar, stats: dict):
+def populate_plot(
+    fig,
+    cannon: Cannon,
+    target_pos: Vector,
+    radar: Radar,
+    display_radar_range: bool,
+    stats: dict,
+):
     add_trace(fig, cannon.pos, "markers+text", "Cannon", 12)
     add_trace(fig, target_pos, "markers+text", "Target", 12)
 
     if not radar.pos.equals(target_pos):
         add_trace(fig, radar.pos, "markers+text", "Radar", 12)
+    if display_radar_range:
+        add_hemisphere(fig, radar.pos, radar.range, "Radar range")
 
-    add_hemisphere(fig, radar.pos, radar.range, "Radar range")
     if "trajectory" in stats:
         add_trace(fig, [p for _, p in stats["trajectory"]], "lines", "Trajectory", 8)
         add_trace(fig, [cannon.pos, stats["trajectory"][0][1]], "lines", "Barrel", 8)

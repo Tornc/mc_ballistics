@@ -1,6 +1,5 @@
 import math
 import random
-import streamlit as st
 from collections import Counter
 from dataclasses import dataclass
 from time import time
@@ -14,7 +13,7 @@ class Cannon:
     v_ms: float
     length: int
     g: float
-    c_d: float
+    cd: float
     yaw: float
     pitch: float
     min_pitch: float
@@ -46,7 +45,7 @@ def calculate_pitch(
 
     # Constants
     g = gravity  # CBC gravity
-    c_d = drag_coefficient  # drag coefficient
+    cd = drag_coefficient  # drag coefficient
     t0 = 0  # Minimum projectile flight time in ticks
     tn = 750  # Maximum projectile flight time in ticks
     start_step_size = 18.75
@@ -60,12 +59,12 @@ def calculate_pitch(
     u = v_m / 20  # Convert to velocity per tick
 
     # Higher order parameters
-    A = g * c_d / (u * (1 - c_d))
+    A = g * cd / (u * (1 - cd))
 
     def B(t):
-        return t * (g * c_d / (1 - c_d)) * 1 / X_R
+        return t * (g * cd / (1 - cd)) * 1 / X_R
 
-    C = L / (u * X_R) * (g * c_d / (1 - c_d)) + h / X_R
+    C = L / (u * X_R) * (g * cd / (1 - cd)) + h / X_R
 
     # The idea is to start with very large steps and decrease step size
     # the closer we get to the actual value.
@@ -104,8 +103,8 @@ def calculate_pitch(
                 return None, None
 
             # Distance of projectile at t
-            p1_X_R1 = u * math.cos(a_R1) / math.log(c_d)
-            p2_X_R1 = c_d**t - 1
+            p1_X_R1 = u * math.cos(a_R1) / math.log(cd)
+            p2_X_R1 = cd**t - 1
             p3_X_R1 = L * math.cos(a_R1)
             X_R1 = p1_X_R1 * p2_X_R1 + p3_X_R1
 
@@ -129,6 +128,9 @@ def calculate_pitch(
 
 def calculate_yaw_pitch_t(cannon: Cannon, target_pos: Vector, low: bool):
     dpos = target_pos.sub(cannon.pos)
+    # The target is literally inside the barrel
+    if dpos.length() <= cannon.length:
+        return None, None, None
     horizontal_dist = math.sqrt(dpos.x**2 + dpos.z**2)
     t, pitch = calculate_pitch(
         distance=horizontal_dist,
@@ -136,7 +138,7 @@ def calculate_yaw_pitch_t(cannon: Cannon, target_pos: Vector, low: bool):
         target_height=dpos.y,
         cannon_length=cannon.length,
         gravity=cannon.g,
-        drag_coefficient=cannon.c_d,
+        drag_coefficient=cannon.cd,
         low=low,
     )
 
@@ -177,17 +179,18 @@ def simulate_trajectory(
         for t in range(max_ticks + 1):
             trajectory.append((t, pos.copy()))
             pos = pos.add(vel)
-            vel = vel.mul(cannon.c_d)
+            vel = vel.mul(cannon.cd)
             vel.y -= cannon.g
 
     # TODO: termination condition is wrong here
     # NOTE: Cannon can be under or above target.
     if stop_y is not None:
-        raise NotImplementedError
-        for t in range(100000):  # Endless calculation protection.
+        # raise NotImplementedError
+        # for t in range(100000):  # Endless calculation protection.
+        for t in range(1000):
             trajectory.append((t, pos.copy()))
             pos = pos.add(vel)
-            vel = vel.mul(cannon.c_d)
+            vel = vel.mul(cannon.cd)
             vel.y -= cannon.g
 
     return trajectory
@@ -407,31 +410,32 @@ def compute_rmse(
     return math.sqrt(err / n)
 
 
-@timed_function
+# TODO: there is a case where the estimated velocity balloons to infinity
+# if the target is too close. And idk how it occurs.
 def estimate_muzzle(
     partial_trajectory: list[tuple[float, Vector]],
     v_ms_range: tuple[int, int],
-    c_d: float = None,
+    cd: float = None,
     g: float = None,
     max_s: int = 750,
 ):
     # 2 datapoints are enough if drag and gravity are already known.
-    # 3 is enough, but weird things may still happen with c_d and g estimation.
+    # 3 is enough, but weird things may still happen with cd and g estimation.
     if len(partial_trajectory) < 2:
         return  # Not enough info
 
     obs_v = compute_obs_velocities(partial_trajectory)
 
-    # TODO: if g is known, we can compute c_d more reliably
-    c_d = estimate_cd(obs_v) if c_d is None else c_d
-    if c_d is None:
+    # TODO: if g is known, we can compute cd more reliably
+    cd = estimate_cd(obs_v) if cd is None else cd
+    if cd is None:
         return  # Not enough info
-    g = estimate_g(obs_v, c_d) if g is None else g
+    g = estimate_g(obs_v, cd) if g is None else g
     if g is None:
         return  # Not enough info
 
     first_dt, first_avg_vel = obs_v[0]
-    v_curr = avg_to_instantaneous_velocity(first_avg_vel, first_dt, c_d, g)
+    v_curr = avg_to_instantaneous_velocity(first_avg_vel, first_dt, cd, g)
 
     # compute tick offsets for each observation relative to the first observed time
     t0 = partial_trajectory[0][0]
@@ -439,7 +443,7 @@ def estimate_muzzle(
 
     best = dict(rmse=float("inf"), stats=None)
     for s in range(0, max_s):
-        muzzle_pos, v0 = backpropagate(partial_trajectory[0][1], v_curr, s, c_d, g)
+        muzzle_pos, v0 = backpropagate(partial_trajectory[0][1], v_curr, s, cd, g)
         v_ms = round(v0.length() * 20)  # From v/tick to v/sec
 
         # Outside these bounds, the velocity is absolutely off,
@@ -453,7 +457,7 @@ def estimate_muzzle(
         yaw, pitch = velocity_to_angles(v0)
         # NOTE: length will mess with the simulation due to
         # yaw/pitch being AT v0, not actual muzzle location.
-        cannon_candidate = Cannon(muzzle_pos, v_ms, 0, g, c_d, yaw, pitch, 0, 0)
+        cannon_candidate = Cannon(muzzle_pos, v_ms, 0, g, cd, yaw, pitch, 0, 0)
         sim_ticks = s + offsets[-1]
         sim_traj = simulate_trajectory(cannon_candidate, max_ticks=sim_ticks)
 
@@ -464,7 +468,7 @@ def estimate_muzzle(
                 pos=muzzle_pos,
                 v_ms=v_ms,
                 g=g,
-                c_d=c_d,
+                cd=cd,
                 yaw=yaw,
                 pitch=pitch,
             )
@@ -476,7 +480,6 @@ def estimate_muzzle(
     return best["stats"]
 
 
-@st.fragment
 def perform_simulation(
     cannon: Cannon,
     target_pos: Vector,
@@ -529,12 +532,10 @@ def perform_simulation(
         return results
 
     results.update(dict(observed_trajectory=observed_trajectory))
-
-    # TODO: this will go to inf if muzzle is PAST target!  (i think)
     stats = estimate_muzzle(
         partial_trajectory=observed_trajectory,
         v_ms_range=assumed_v_ms_range,
-        c_d=assumed_cd,
+        cd=assumed_cd,
         g=assumed_g,
     )
     if stats is None:
@@ -546,7 +547,7 @@ def perform_simulation(
             est_muzzle_pos=est_muzzle_pos,
             est_v_ms=stats["v_ms"],
             est_g=stats["g"],
-            est_c_d=stats["c_d"],
+            est_cd=stats["cd"],
             est_yaw=stats["yaw"],
             est_pitch=stats["pitch"],
             error_est_muzzle_pos=muzzle_pos.sub(est_muzzle_pos).length(),

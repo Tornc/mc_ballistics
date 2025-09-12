@@ -1,6 +1,6 @@
 import math
+import streamlit as st
 from dataclasses import dataclass
-from numbers import Number
 from time import time
 
 
@@ -34,10 +34,6 @@ def tick2sec(tick: int) -> float:
 
 def sec2tick(sec: float) -> int:
     return round(sec * 20)
-
-
-def safe_extract(key: str, dict: dict):
-    return dict[key] if key in dict else None
 
 
 @dataclass
@@ -90,3 +86,11 @@ class Vector:
 
     def __str__(self):
         return self.tostring()
+
+
+def safe_extract(key: str, dict: dict):
+    return dict[key] if key in dict else None
+
+
+def ssg(key: str):
+    return st.session_state[key]
