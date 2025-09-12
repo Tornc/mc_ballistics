@@ -142,7 +142,7 @@ def sett_clc_cannon():
 def sett_rev_cannon(disable: bool):
     st.text(
         "Assumed cannon stats",
-        help="If known, highly recommend to set these. It will improve estimator consistency massively.",
+        help="Leave empty if unknown, but reliability will take a hit.",
     )
     with st.container(border=True, gap=None):
         st.number_input(
@@ -282,7 +282,7 @@ def sidebar():
                     perform_estimation=ssg("perform_estimation"),
                     radar=ssg("radar"),
                     assumed_cd=ssg("assumed_cd"),
-                    assumed_g=ssg("assumed_cd"),
+                    assumed_g=ssg("assumed_g"),
                     assumed_v_ms_range=ssg("assumed_velocity_range"),
                 )
             sett_rev_cannon(not ssg("perform_estimation"))

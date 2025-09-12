@@ -25,7 +25,7 @@ DF_RADAR_POS_X: int = None
 DF_RADAR_POS_Y: int = None
 DF_RADAR_POS_Z: int = None
 DF_RADAR_RANGE: int = 250
-DF_RADAR_SCAN_RATE: int = 1
+DF_RADAR_SCAN_RATE: int = 2
 DF_RADAR_DROP_RATE: float = 0.2
 
 # DEFAULT: ESTIMATOR
@@ -75,8 +75,8 @@ sset("radar_scan_rate", DF_RADAR_SCAN_RATE)
 sset("radar_drop_rate", DF_RADAR_DROP_RATE)
 
 # INITIAL: ESTIMATOR
-sset("assumed_cd", None)
-sset("assumed_g", None)
+sset("assumed_cd", DF_CANNON_CD)
+sset("assumed_g", DF_CANNON_G)
 sset("assumed_velocity_range", DF_ASSUMED_VELOCITY_RANGE)
 
 # INITIAL: MISC

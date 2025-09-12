@@ -10,6 +10,7 @@ def add_trace(
     mode: str = "markers",
     name: str | None = None,
     size: int | None = None,
+    line_dash: str | None = None, # ugly but I'm tired.
 ):
     # Convert single vector to list to make life easier.
     if isinstance(positions, Vector):
@@ -26,7 +27,10 @@ def add_trace(
     if "markers" in mode:
         trace_config["marker"] = dict(size=size)
     if "lines" in mode:
-        trace_config["line"] = dict(width=size)
+        line_config = dict(width=size)
+        if line_dash:
+            line_config["dash"] = line_dash
+        trace_config["line"] = line_config
 
     fig.add_trace(go.Scatter3d(**trace_config))
 

@@ -86,7 +86,7 @@ def generate_statistics():
         perform_estimation=ssg("perform_estimation"),
         radar=ssg("radar"),
         assumed_cd=ssg("assumed_cd"),
-        assumed_g=ssg("assumed_cd"),
+        assumed_g=ssg("assumed_g"),
         assumed_v_ms_range=ssg("assumed_velocity_range"),
     )
 
