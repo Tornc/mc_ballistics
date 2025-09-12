@@ -23,8 +23,6 @@ A web-based ballistics simulation tool for the Create: Big Cannons addon. Visual
     </em>
 </p>
 
----
-
 ![pic2](./docs/reverse.png)
 
 <p align="center">
