@@ -144,7 +144,7 @@ def calculate_yaw_pitch_t(cannon: Cannon, target_pos: Vector, low: bool):
     if t is None:
         return None, None, None
 
-    yaw = math.degrees(math.atan2(dpos.x, dpos.z))
+    yaw = -math.degrees(math.atan2(dpos.x, dpos.z))
     return yaw, pitch, t
 
 
@@ -161,9 +161,14 @@ def simulate_trajectory(
     yaw_rad = math.radians(cannon.yaw)
     pitch_rad = math.radians(cannon.pitch)
 
+    # Following CBC convention:
+    # 0/360 => +Z
+    # 90 => -X
+    # 180 => -Z
+    # 370 => +X
     # Cannon aiming direction
     dir = Vector(
-        math.cos(pitch_rad) * math.sin(yaw_rad),
+        math.cos(pitch_rad) * -math.sin(yaw_rad),
         math.sin(pitch_rad),
         math.cos(pitch_rad) * math.cos(yaw_rad),
     )
@@ -318,7 +323,7 @@ def estimate_g(velocities: list[tuple[int, Vector]], cd: float) -> float | None:
 def velocity_to_angles(vel: Vector) -> tuple[float, float]:
     horiz = math.hypot(vel.x, vel.z) + EPSILON_ANGLE
     pitch = math.degrees(math.atan2(vel.y, horiz))
-    yaw = math.degrees(math.atan2(vel.x, vel.z))
+    yaw = -math.degrees(math.atan2(vel.x, vel.z))
     return yaw, pitch
 
 

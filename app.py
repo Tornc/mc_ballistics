@@ -112,5 +112,3 @@ with t2:
     results()
 # with t3:
 #     st.write(st.session_state)
-
-# TODO: fix yaw inconsistency

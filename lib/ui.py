@@ -80,7 +80,7 @@ def sett_clc_cannon():
             placeholder=f"{DF_CANNON_LENGTH}",
         )
         st.select_slider(
-            help="Artillery guns usually take the high trajectory.",
+            help=f"Artillery guns usually take the {DF_TRAJECTORY_TYPE} trajectory.",
             key="trajectory_type",
             label="Trajectory type",
             options=("low", "high"),
@@ -117,24 +117,22 @@ def sett_clc_cannon():
             key="manual_fire",
             label="Manual fire",
         )
-        st.number_input(
+        st.slider(
             disabled=not ssg("manual_fire"),
             help="0/360 (S), 90 (W), 180 (N), 270 (E)",
             key="cannon_yaw",
             label="Yaw",
             max_value=360.0,
             min_value=0.0,
-            placeholder=f"{DF_CANNON_YAW}",
             step=0.1,
         )
-        st.number_input(
+        st.slider(
             disabled=not ssg("manual_fire"),
-            help="-90 (down) to +90 (up).",
+            help="-90 (down), +90 (up)",
             key="cannon_pitch",
             label="Pitch",
             max_value=90.0,
             min_value=-90.0,
-            placeholder=f"{DF_CANNON_PITCH}",
             step=0.1,
         )
 
@@ -339,8 +337,8 @@ def res_reverse():
     n_obs = safe_extract("n_obs", stats)
     est_muzzle_pos = safe_extract("est_muzzle_pos", stats)
     est_v_ms = safe_extract("est_v_ms", stats)
-    est_g = safe_extract("est_g", stats)
     est_cd = safe_extract("est_cd", stats)
+    est_g = safe_extract("est_g", stats)
     est_yaw = safe_extract("est_yaw", stats)
     est_pitch = safe_extract("est_pitch", stats)
     error_est_muzzle_pos = safe_extract("error_est_muzzle_pos", stats)
@@ -358,8 +356,8 @@ def res_reverse():
         n_obs=n_obs,
         est_muzzle_pos=est_muzzle_pos,
         est_v_ms=est_v_ms,
-        est_g=est_g,
         est_cd=est_cd,
+        est_g=est_g,
         est_yaw=est_yaw,
         est_pitch=est_pitch,
         error_est_muzzle_pos=error_est_muzzle_pos,
@@ -368,8 +366,8 @@ def res_reverse():
         "\# of observations": n_obs,
         "Muzzle position": est_muzzle_pos,
         "Shell velocity": est_v_ms,
-        "Gravity": est_g,
         "Drag coefficient": est_cd,
+        "Gravity": est_g,
         "Yaw": est_yaw,
         "Pitch": est_pitch,
         "Muzzle position error": error_est_muzzle_pos,
