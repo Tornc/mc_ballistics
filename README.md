@@ -37,7 +37,7 @@ A web-based ballistics simulation tool for the Create: Big Cannons addon. Visual
 
 I guess I got sidetracked 😅.
 
-Anyways, the initial goal was to make a proof of concept that demonstrated the possibility of automated counter-battery systems. This is done through a Some Peripherals' Radar or anything equivalent. The key requirement is that the peripheral has to: **detect entities and record their position**.
+Anyways, the initial goal was to make a proof of concept that demonstrated the possibility of automated counter-battery systems. This is done through a Some Peripherals' Radar or anything equivalent. The key requirement is that the peripheral has to **detect entities and record their position**.
 
 ## How to use
 
@@ -66,7 +66,7 @@ $ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Or run `script.cmd` (it does the exact same thing).
+Or run `script.cmd` (it does the exact same thing as `streamlit run app.py`).
 
 4. The app will open in your browser.
 
