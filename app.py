@@ -96,6 +96,7 @@ def generate_figure():
     )
 
 
+init_state()
 sidebar()
 generate_statistics()
 
