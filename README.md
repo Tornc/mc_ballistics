@@ -14,18 +14,18 @@ A web-based ballistics simulation tool for the Create: Big Cannons addon. Visual
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://mc-ballistics.streamlit.app/)
 
 ![pic1](./docs/calculator.png)
-<center>
+<p align="center">
     <em>
         Cannon stats and manual firing option (left) and interactive plot (right).
     </em>
-</center>
+</p>
 
 ![pic2](./docs/reverse.png)
-<center>
+<p align="center">
     <em>
         Enemy cannon muzzle locator (left) and firing solution information (right).
     </em>
-</center>
+</p>
 
 ## Why?
 
