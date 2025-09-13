@@ -1,4 +1,4 @@
-# Create: Big Cannons [Cannon Doxxer](## "*will fail... occasionally")
+# Create: Big Cannons Cannon Doxxer
 
 <blockquote>
   <details>
