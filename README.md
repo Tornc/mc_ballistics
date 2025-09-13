@@ -78,4 +78,5 @@ The trajectory simulation's formulas used have been written by **@sashafiesta**,
 
 - [ ] Clean up the simulation back-end.
 - [ ] Option to increase trajectory simulation fidelity (<1 ticks).
+- [ ] Why the heck did I use `safe_extract()` (it's not safe) when I could've used `getattr()` instead?
 - [ ] Get [Stlite](https://github.com/whitphx/stlite/blob/main/packages/desktop/README.md) to work so binaries can be shared. (I still can't get rid of that fugly Electron toolbar.)

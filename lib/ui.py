@@ -142,7 +142,7 @@ def sett_rev_cannon(disable: bool):
         "Assumed cannon stats",
         help="Leave empty if unknown, but reliability will take a hit.",
     )
-    with st.container(border=True, gap=None):
+    with st.container(border=True):
         st.number_input(
             disabled=disable,
             help=f"{DF_CANNON_CD} for big cannons.",
@@ -243,7 +243,7 @@ def sett_rev_radar(disable: bool):
 
 
 def sett_credits():
-    cl = st.columns([0.3, 0.37, 0.25], gap=None)
+    cl = st.columns([0.3, 0.37, 0.25])
     cl[0].text("Made with ❤️")
     cl[1].markdown(
         "[![GitHub](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/Tornc/mc_ballistics)"
@@ -290,7 +290,8 @@ def sidebar():
 
 
 def plot(fig):
-    theme = None if st.context.theme.type == "light" else "streamlit"
+    theme_type = getattr(getattr(st.context, "theme", None), "type", None)
+    theme = None if theme_type == "light" else "streamlit"
     st.plotly_chart(fig, use_container_width=True, theme=theme)
 
 
