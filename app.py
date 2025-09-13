@@ -1,10 +1,10 @@
 import streamlit as st
 
-from lib.constr import *
-from lib.plotting import *
-from lib.simulation import *
-from lib.ui import *
-from lib.utils import *
+from lib.constr import init_state, DF_MAX_ENVIRONMENT_SIZE
+from lib.plotting import init_plot, populate_plot
+from lib.simulation import perform_simulation, Cannon, Radar
+from lib.ui import sidebar, plot, results
+from lib.utils import Vector, ssg
 
 ICON_PATH = "./assets/img/icon.ico"
 
@@ -100,16 +100,8 @@ init_state()
 sidebar()
 generate_statistics()
 
-t1, t2 = st.tabs(
-    [
-        "Plot",
-        "Results",
-        # "Debug",
-    ]
-)
-with t1:
+tab1, tab2 = st.tabs(["Plot", "Results"])
+with tab1:
     plot(generate_figure())
-with t2:
+with tab2:
     results()
-# with t3:
-#     st.write(st.session_state)

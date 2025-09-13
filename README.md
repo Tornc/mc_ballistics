@@ -80,5 +80,4 @@ The trajectory simulation's formulas used have been written by **@sashafiesta**,
 
 - [ ] Clean up the simulation back-end.
 - [ ] Option to increase trajectory simulation fidelity (<1 ticks).
-- [ ] Replace `safe_extract()` (not safe) with `getattr()`.
 - [ ] Create a proper binary without: 1) Pyodide / package load times. 2) fugly Electron bar 

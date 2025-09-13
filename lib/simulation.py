@@ -3,7 +3,7 @@ import random
 from collections import Counter
 from dataclasses import dataclass
 from time import time
-from lib.utils import *
+from lib.utils import sec2tick, tick2sec, Vector
 
 
 @dataclass
@@ -145,7 +145,7 @@ def calculate_yaw_pitch_t(cannon: Cannon, target_pos: Vector, low: bool):
         return None, None, None
 
     yaw = -math.degrees(math.atan2(dpos.x, dpos.z))
-    yaw = (yaw + 360) % 360 # -180, 180 => 0, 360
+    yaw = (yaw + 360) % 360  # -180, 180 => 0, 360
     return yaw, pitch, t
 
 
@@ -325,7 +325,7 @@ def velocity_to_angles(vel: Vector) -> tuple[float, float]:
     horiz = math.hypot(vel.x, vel.z) + EPSILON_ANGLE
     pitch = math.degrees(math.atan2(vel.y, horiz))
     yaw = -math.degrees(math.atan2(vel.x, vel.z))
-    yaw = (yaw + 360) % 360 # -180, 180 => 0, 360
+    yaw = (yaw + 360) % 360  # -180, 180 => 0, 360
     return yaw, pitch
 
 

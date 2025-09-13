@@ -88,9 +88,5 @@ class Vector:
         return self.tostring()
 
 
-def safe_extract(key: str, dict: dict):
-    return dict[key] if key in dict else None
-
-
 def ssg(key: str):
     return st.session_state[key]

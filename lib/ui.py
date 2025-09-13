@@ -1,7 +1,7 @@
 import streamlit as st
 from lib.constr import *
 from lib.simulation import perform_simulation
-from lib.utils import safe_extract, ssg
+from lib.utils import ssg
 
 
 def center_text(columns, texts):
@@ -298,14 +298,14 @@ def plot(fig):
 def res_cannon():
     st.text("Cannon")
 
-    stats = ssg("statistics")
+    stats:dict = ssg("statistics")
     # I hate this.
-    yaw = safe_extract("yaw", stats)
-    pitch = safe_extract("pitch", stats)
-    flight_time = safe_extract("flight_time", stats)
-    muzzle_pos = safe_extract("muzzle_pos", stats)
-    impact_pos = safe_extract("impact_pos", stats)
-    error_impact = safe_extract("error_impact", stats)
+    yaw = stats.get("yaw")
+    pitch = stats.get("pitch")
+    flight_time = stats.get("flight_time")
+    muzzle_pos = stats.get("muzzle_pos")
+    impact_pos = stats.get("impact_pos")
+    error_impact = stats.get("error_impact")
 
     yaw = round(yaw, 2) if yaw is not None else None
     pitch = round(pitch, 2) if pitch is not None else None
@@ -333,16 +333,16 @@ def res_reverse():
         "Estimator", help="These values are derived from samples obtained by radar."
     )
 
-    stats = ssg("statistics")
+    stats: dict = ssg("statistics")
     # I still hate this.
-    n_obs = safe_extract("n_obs", stats)
-    est_muzzle_pos = safe_extract("est_muzzle_pos", stats)
-    error_est_muzzle_pos = safe_extract("error_est_muzzle_pos", stats)
-    est_v_ms = safe_extract("est_v_ms", stats)
-    est_cd = safe_extract("est_cd", stats)
-    est_g = safe_extract("est_g", stats)
-    est_yaw = safe_extract("est_yaw", stats)
-    est_pitch = safe_extract("est_pitch", stats)
+    n_obs = stats.get("n_obs")
+    est_muzzle_pos = stats.get("est_muzzle_pos")
+    error_est_muzzle_pos = stats.get("error_est_muzzle_pos")
+    est_v_ms = stats.get("est_v_ms")
+    est_cd = stats.get("est_cd")
+    est_g = stats.get("est_g")
+    est_yaw = stats.get("est_yaw")
+    est_pitch = stats.get("est_pitch")
 
     est_muzzle_pos = (
         est_muzzle_pos.round().tostring() if est_muzzle_pos is not None else None
