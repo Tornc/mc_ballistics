@@ -2,7 +2,7 @@ import streamlit as st
 
 from lib.constr import init_state, DF_MAX_ENVIRONMENT_SIZE
 from lib.plotting import init_plot, populate_plot
-from lib.simulation import perform_simulation, Cannon, Radar
+from lib.simulation import Cannon, Radar, perform_simulation
 from lib.ui import sidebar, plot, results
 from lib.utils import Vector, ssg
 

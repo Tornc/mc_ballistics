@@ -3,7 +3,7 @@ import random
 from collections import Counter
 from dataclasses import dataclass
 from time import time
-from lib.utils import sec2tick, tick2sec, Vector
+from lib.utils import Vector, sec2tick, tick2sec
 
 
 @dataclass

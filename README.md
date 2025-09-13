@@ -9,11 +9,7 @@
 
 A web-based ballistics simulation tool for the Create: Big Cannons addon. Visualise trajectories, calculate firing solutions and locate (enemy) cannon locations.
 
-⬇️ Check it out here!
-
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://mc-ballistics.streamlit.app/)
-
-And if that doesn't work, you can also check it out on my [GitHub Page](https://tornc.github.io/mc_ballistics/).
+Check it out at: https://tornc.github.io/mc_ballistics/.
 
 ---
 
