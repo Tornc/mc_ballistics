@@ -142,7 +142,7 @@ def sett_rev_cannon(disable: bool):
         "Assumed cannon stats",
         help="Leave empty if unknown, but reliability will take a hit.",
     )
-    with st.container(border=True, gap=None):
+    with st.container(border=True):
         st.number_input(
             disabled=disable,
             help=f"{DF_CANNON_CD} for big cannons.",
