@@ -13,6 +13,8 @@ A web-based ballistics simulation tool for the Create: Big Cannons addon. Visual
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://mc-ballistics.streamlit.app/)
 
+And if that doesn't work, you can also check it out on my [GitHub Page](https://tornc.github.io/mc_ballistics/).
+
 ---
 
 ![pic1](./docs/calculator.png)
@@ -78,5 +80,5 @@ The trajectory simulation's formulas used have been written by **@sashafiesta**,
 
 - [ ] Clean up the simulation back-end.
 - [ ] Option to increase trajectory simulation fidelity (<1 ticks).
-- [ ] Why the heck did I use `safe_extract()` (it's not safe) when I could've used `getattr()` instead?
-- [ ] Get [Stlite](https://github.com/whitphx/stlite/blob/main/packages/desktop/README.md) to work so binaries can be shared. (I still can't get rid of that fugly Electron toolbar.)
+- [ ] Replace `safe_extract()` (not safe) with `getattr()`.
+- [ ] Create a proper binary without: 1) Pyodide / package load times. 2) fugly Electron bar 
