@@ -1,9 +1,12 @@
 import math
 import random
-from collections import Counter
 from dataclasses import dataclass
 from time import time
-from lib.utils import Vector, sec2tick, tick2sec
+from lib.utils import *
+
+EPSILON = 1e-12
+ACCEPTABLE_RMSE = 0.001
+LOW_ANGLE_THRESHOLD = 10
 
 
 @dataclass
@@ -27,7 +30,7 @@ class Radar:
     drop_rate: float
 
 
-def calculate_pitch(
+def solve_pitch(
     distance: float,
     velocity_ms: float,
     target_height: float,
@@ -37,7 +40,7 @@ def calculate_pitch(
     low: bool,
 ):
     """
-    All calculations come from Endal's ballistics calculator made in Desmos (https://www.desmos.com/calculator/az4angyumw),
+    All math comes from Endal's ballistics calculator made in Desmos (https://www.desmos.com/calculator/az4angyumw),
     there may be bugs because the formulas sure look like some kind of alien language to me. It's >60x faster than
     brute-forcing pitch, and has higher precision to boot.
     """
@@ -131,7 +134,7 @@ def calculate_yaw_pitch_t(cannon: Cannon, target_pos: Vector, low: bool):
     if dpos.length() <= cannon.length:
         return None, None, None
     horizontal_dist = math.sqrt(dpos.x**2 + dpos.z**2)
-    t, pitch = calculate_pitch(
+    t, pitch = solve_pitch(
         distance=horizontal_dist,
         velocity_ms=cannon.v_ms,
         target_height=dpos.y,
@@ -150,14 +153,14 @@ def calculate_yaw_pitch_t(cannon: Cannon, target_pos: Vector, low: bool):
 
 
 def simulate_trajectory(
-    cannon: Cannon, max_ticks: int = None, stop_y: int = None
+    cannon: Cannon, max_ticks: int = None, stop_y: float = None
 ) -> list[tuple[int, Vector]]:
     """
     According to @sashafiesta#1978's formula on Discord:
     Vx = 0.99 * Vx
     Vy = 0.99 * Vy - 0.05
     """
-    assert (max_ticks == None) ^ (stop_y == None), "One of these must be set."
+    assert (max_ticks != None) or (stop_y != None), "At least one of these must be set."
 
     yaw_rad = math.radians(cannon.yaw)
     pitch_rad = math.radians(cannon.pitch)
@@ -180,22 +183,17 @@ def simulate_trajectory(
 
     trajectory: list[tuple[int, Vector]] = []
 
-    if max_ticks is not None:
-        for t in range(max_ticks + 1):
-            trajectory.append((t, pos.copy()))
-            pos = pos.add(vel)
-            vel = vel.mul(cannon.cd)
-            vel.y -= cannon.g
+    if max_ticks is None and stop_y is not None:
+        max_ticks = 100000  # Endless calculation protection.
 
-    if stop_y is not None:
-        for t in range(100000):  # Endless calculation protection.
-            trajectory.append((t, pos.copy()))
-            pos = pos.add(vel)
-            vel = vel.mul(cannon.cd)
-            vel.y -= cannon.g
-            # We'll never reach, so quit.
-            if pos.y < stop_y and vel.y <= 0:
-                break
+    for t in range(max_ticks + 1):
+        trajectory.append((t, pos.copy()))
+        pos = pos.add(vel)
+        vel = vel.mul(cannon.cd)
+        vel.y -= cannon.g
+        # We'll never reach, so quit.
+        if stop_y is not None and pos.y < stop_y and vel.y <= 0:
+            break
 
     return trajectory
 
@@ -225,32 +223,17 @@ def get_observed_trajectory(
     return items
 
 
-# TODO: clean this garbage up. (and improve it)
-
-EPSILON_ANGLE = 1e-12
-EPSILON_TIME = 1e-9
-CDG_DIGITS = 5
-ACCEPTABLE_RMSE = 1e-3
-
-
-# NOTE: maybe sec2tick here is a bad idea, because information might be lost.
-def compute_obs_velocities(
-    datapoints: list[tuple[float, Vector]],
+def calculate_velocities(
+    observations: list[tuple[float, Vector]],
 ) -> list[tuple[int, Vector]]:
     """
     Note that this will return list of len(datapoints) - 1, because we can't know
-    the velocity of the first datapoint.
-
-    Args:
-        datapoints (list[tuple[float, Vector]]): **seconds**, position
-
-    Returns:
-        list[tuple[float, Vector]]: **ticks**, velocity
+    the velocity of the first observation. Also, dt is in ticks, not seconds.
     """
     velocities = []
-    for i in range(len(datapoints) - 1):
-        t0, p0 = datapoints[i]
-        t1, p1 = datapoints[i + 1]
+    for i in range(len(observations) - 1):
+        t0, p0 = observations[i]
+        t1, p1 = observations[i + 1]
         dt = sec2tick(t1 - t0)  # You never know what in-game lag will do.
         if dt <= 0:
             continue
@@ -259,32 +242,86 @@ def compute_obs_velocities(
     return velocities
 
 
-def estimate_cd(velocities: list[int, Vector]) -> float | None:
+def velocity_to_angles(vel: Vector) -> tuple[float, float]:
+    horiz = math.hypot(vel.x, vel.z) + EPSILON
+    pitch = math.degrees(math.atan2(vel.y, horiz))
+    yaw = -math.degrees(math.atan2(vel.x, vel.z))
+    yaw = (yaw + 360) % 360  # -180, 180 => 0, 360
+    return yaw, pitch
+
+
+def estimate_cd(velocities: list[int, Vector], g: float = None) -> float | None:
     if len(velocities) < 2:
         return None
+
+    def calc_cdxz(v0c: float, v1c: float, dt: int):
+        if abs(v0c) > EPSILON and v1c * v0c > EPSILON:
+            return (v1c / v0c) ** (1 / dt)
+
+    def solve_cdy(
+        v0y: float,
+        v1y: float,
+        dt: int,
+        g: float,
+    ) -> float | None:
+        # No information to be gained, don't bother.
+        if dt <= 0 or (abs(v0y) < EPSILON and abs(v1y) < EPSILON):
+            return None
+
+        # Difference between predicted and observed vy
+        def f(cd: float) -> float:
+            # Clamp domain to avoid weird shit.
+            if cd <= 0 or cd >= 1:
+                return float("inf")
+            cd_dt = cd**dt
+            return cd_dt * v0y - g * (1 - cd_dt) / (1 - cd) - v1y
+
+        # Bisection
+        low, high = EPSILON, 1 - EPSILON
+        f_low, f_high = f(low), f(high)
+        if f_low * f_high > 0:
+            return None  # no guaranteed root
+
+        while high - low > EPSILON:
+            middle = (low + high) / 2
+            f_mid = f(middle)
+            if f_low * f_mid <= 0:
+                high, f_high = middle, f_mid
+            else:
+                low, f_low = middle, f_mid
+
+        return (low + high) / 2
 
     cd_candidates = []
     for i in range(len(velocities) - 1):
         dt, v0 = velocities[i]
         _, v1 = velocities[i + 1]
-
-        if abs(v0.x) > EPSILON_ANGLE and v1.x * v0.x > EPSILON_ANGLE:
-            cd_val = (v1.x / v0.x) ** (1 / dt)
-            cd_candidates.append(round(cd_val, CDG_DIGITS))
-        if abs(v0.z) > EPSILON_ANGLE and v1.z * v0.z > EPSILON_ANGLE:
-            cd_val = (v1.z / v0.z) ** (1 / dt)
-            cd_candidates.append(round(cd_val, CDG_DIGITS))
+        if g is None:  # Default case where we don't know shit.
+            cdx = calc_cdxz(v0.x, v1.x, dt)
+            cdz = calc_cdxz(v0.z, v1.z, dt)
+            if cdx is not None:
+                cd_candidates.append(cdx)
+            if cdz is not None:
+                cd_candidates.append(cdz)
+        else:
+            cdy = solve_cdy(v0.y, v1.y, dt, g)
+            cdy is not None and cd_candidates.append(cdy)
+            # For flat angles, cdy becomes less reliable
+            # while cdxz becomes a bit better.
+            _, pitch = velocity_to_angles(v0)
+            if abs(pitch) <= LOW_ANGLE_THRESHOLD:
+                cdx = calc_cdxz(v0.x, v1.x, dt)
+                cdz = calc_cdxz(v0.z, v1.z, dt)
+                if cdx is not None:
+                    cd_candidates.append(cdx)
+                if cdz is not None:
+                    cd_candidates.append(cdz)
 
     if len(cd_candidates) == 0:
         return None
 
-    # Either a median (all differing data points) or mode
-    mode, freq = Counter(cd_candidates).most_common(1)[0]
-    if freq > 1:
-        return mode
-    else:
-        # Median
-        return sorted(cd_candidates)[len(cd_candidates) // 2]
+    best = sorted(cd_candidates)[len(cd_candidates) // 2]  # Median
+    return round_increment(best, EPSILON)
 
 
 def estimate_g(velocities: list[tuple[int, Vector]], cd: float) -> float | None:
@@ -298,191 +335,136 @@ def estimate_g(velocities: list[tuple[int, Vector]], cd: float) -> float | None:
         _, v1 = velocities[i + 1]
 
         denom = 1 - cd**dt
-        if abs(denom) < EPSILON_ANGLE:
+        if abs(denom) < EPSILON:
             continue
 
+        # Dont discard negative g. It will skew the median.
         g_val = (cd**dt * v0.y - v1.y) * (1 - cd) / denom
-
-        # Discard if it doesn't make sense.
-        if g_val < 0:
-            continue
-
-        g_candidates.append(round(g_val, CDG_DIGITS))
+        g_candidates.append(g_val)
 
     if len(g_candidates) == 0:
         return None
 
-    # Either a median (all differing data points) or mode
-    mode, freq = Counter(g_candidates).most_common(1)[0]
-    if freq > 1:
-        return mode
-    else:
-        # Median
-        return sorted(g_candidates)[len(g_candidates) // 2]
+    # Median
+    best = sorted(g_candidates)[len(g_candidates) // 2]
+    return round_increment(best, EPSILON)
 
 
-def velocity_to_angles(vel: Vector) -> tuple[float, float]:
-    horiz = math.hypot(vel.x, vel.z) + EPSILON_ANGLE
-    pitch = math.degrees(math.atan2(vel.y, horiz))
-    yaw = -math.degrees(math.atan2(vel.x, vel.z))
-    yaw = (yaw + 360) % 360  # -180, 180 => 0, 360
-    return yaw, pitch
-
-
-def backpropagate(
-    p: Vector, v: Vector, s: int, cd: float, g: float
+def reverse_simulate(
+    posN: Vector, velN: Vector, t: int, cd: float, g: float
 ) -> tuple[Vector, Vector]:
-    p_back, v_back = Vector(p.x, p.y, p.z), Vector(v.x, v.y, v.z)
-    for _ in range(s):
-        prev_v = Vector(v_back.x, v_back.y + g, v_back.z).div(cd)
-        prev_p = p_back.sub(prev_v)
-        p_back, v_back = prev_p, prev_v
-
-    return p_back, v_back
-
-
-def avg_to_instantaneous_velocity(
-    avg_vel: Vector, dt: int, cd: float, g: float
-) -> Vector:
     """
-    Convert an observed *average per-tick* velocity computed as:
-        avg_vel = (p(t+dt) - p(t)) / dt
-    into the instantaneous velocity v(t) at the start of that interval,
-    under the discrete model:
-        v_{k+1} = cd * v_k   (x,z)
-        v_{k+1}.y = cd * v_k.y - g
-    dt is integer number of ticks between observations.
+    Simulates backwards from last observation for t ticks. Returns the
+    end position and velocity, which is possibly the starting state.
     """
+    pos, vel = posN.copy(), velN.copy()
+    for _ in range(t):
+        vel.y += g
+        vel = vel.div(cd)
+        pos = pos.sub(vel)
+    return pos, vel
+
+
+def avg_to_inst_velocity(avg_vel: Vector, dt: int, cd: float, g: float):
+    """
+    Average velocity (dt) converted to velocity at the start of the tick.
+    """
+    result = avg_vel.copy()
     if dt <= 0:
-        return avg_vel.copy()
+        return result
 
-    # handle x,z (closed form)
-    if abs(1 - cd) < EPSILON_ANGLE:
-        # cd -> 1 (no drag) limit: displacement_x = v0.x * dt
-        v_x = avg_vel.x
-        v_z = avg_vel.z
+    # drag factor
+    fd = 1 - cd
+    if abs(fd) >= EPSILON:  # cd < 1 means there's drag.
+        cd_dt = cd**dt
+        S = (1 - cd_dt) / fd
+        result.x *= dt / S
+        result.z *= dt / S
+        A = (dt * fd - (1 - cd_dt)) / (fd**2)
+        result.y = (result.y * dt + g * A) / S
+        return result
     else:
-        S = (1 - cd**dt) / (1 - cd)  # sum_{k=0..dt-1} cd^k
-        v_x = avg_vel.x * dt / S
-        v_z = avg_vel.z * dt / S
-
-    # y component (closed form invert)
-    if abs(1 - cd) < EPSILON_ANGLE:
-        # cd -> 1 limit: v decreases linearly by g each tick
-        # displacement_y = dt * v0.y - g * dt*(dt-1)/2
-        # avg_y = v0.y - g*(dt-1)/2  => v0.y = avg_y + g*(dt-1)/2
-        v_y = avg_vel.y + g * (dt - 1) / 2.0
-    else:
-        S = (1 - cd**dt) / (1 - cd)
-        # A = dt/(1-cd) - (1 - cd^dt)/(1-cd)^2
-        A = dt / (1 - cd) - (1 - cd**dt) / ((1 - cd) ** 2)
-        # displacement_y = v0.y * S - g * A
-        # avg_y = displacement_y / dt
-        # => v0.y = (avg_y * dt + g * A) / S
-        v_y = (avg_vel.y * dt + g * A) / S
-
-    return Vector(v_x, v_y, v_z)
+        result.y += g * (dt - 1) / 2
+        return result
 
 
 def compute_rmse(
     sim_traj: list[tuple[float, Vector]],
-    obs_pts: list[tuple[float, Vector]],
-    s: int,
+    observations: list[tuple[float, Vector]],
+    t: int,
     offsets: list[int],
 ) -> float:
     """
-    Compute RMSE between simulated and observed trajectory segments.
-
-    sim_traj: list of (tick, Vector) or plain list indexed by tick (you use simulate_trajectory which appends per tick).
-    obs_pts: list of observed (time_seconds, Vector)
-    s: number of ticks we backpropagated (muzzle is s ticks before obs_pts[0])
-    offsets: integer tick offsets for each obs point relative to obs_pts[0], e.g.
-             offsets[0] == 0, offsets[1] == ticks_between(obs1, obs0), ...
+    See how well the forward simulated points match up with the
+    observed points by calculating the root mean square error.
     """
-    if len(offsets) == 0:
-        return float("inf")
-
     last_offset = offsets[-1]
-    if len(sim_traj) < s + last_offset + 1:
+    if len(sim_traj) < t + last_offset + 1:
         return float("inf")
 
-    err = 0.0
-    n = len(obs_pts)
-    for i in range(n):
-        sim_idx = s + offsets[i]
-        diff = sim_traj[sim_idx][1].sub(obs_pts[i][1])
-        err += diff.dot(diff)
-    return math.sqrt(err / n)
+    total_sq_error = 0.0
+    for i in range(len(observations)):
+        sim_idx = t + offsets[i]
+        dpos = sim_traj[sim_idx][1].sub(observations[i][1])
+        total_sq_error += dpos.dot(dpos)
+
+    return math.sqrt(total_sq_error / len(observations))
 
 
-# TODO: there is a case where the estimated velocity balloons to infinity
-# if the target is too close. And idk how it occurs.
+# TODO: implement halvings or ternary search. Time will literally be cut
+# in half.
 def estimate_muzzle(
-    partial_trajectory: list[tuple[float, Vector]],
+    observations: list[tuple[float, Vector]],
     v_ms_range: tuple[int, int],
     cd: float = None,
     g: float = None,
-    max_s: int = 750,
+    tn: int = 750,
 ):
-    # 2 datapoints are enough if drag and gravity are already known.
+    # 2 datapoints is enough if drag and gravity are already known.
     # 3 is enough, but weird things may still happen with cd and g estimation.
-    if len(partial_trajectory) < 2:
-        return  # Not enough info
+    if len(observations) < 2:
+        return
 
-    obs_v = compute_obs_velocities(partial_trajectory)
-
-    # TODO: if g is known, we can compute cd more reliably
-    cd = estimate_cd(obs_v) if cd is None else cd
+    obs_v = calculate_velocities(observations)
+    # If cd or g are unknown, we use a fallback system to infer the values.
+    # Note: the fallback can fail.
+    cd = estimate_cd(obs_v, g) if cd is None else cd
     if cd is None:
-        return  # Not enough info
+        return
     g = estimate_g(obs_v, cd) if g is None else g
     if g is None:
-        return  # Not enough info
+        return
 
     first_dt, first_avg_vel = obs_v[0]
-    v_curr = avg_to_instantaneous_velocity(first_avg_vel, first_dt, cd, g)
-
+    v_curr = avg_to_inst_velocity(first_avg_vel, first_dt, cd, g)
     # compute tick offsets for each observation relative to the first observed time
-    t0 = partial_trajectory[0][0]
-    offsets = [sec2tick(t - t0) for t, _ in partial_trajectory]
+    offsets = [sec2tick(t - observations[0][0]) for t, _ in observations]
 
-    best = dict(rmse=float("inf"), stats=None)
-    for s in range(0, max_s):
-        muzzle_pos, v0 = backpropagate(partial_trajectory[0][1], v_curr, s, cd, g)
+    best_rmse = float("inf")
+    for t in range(0, tn):
+        muzzle_pos, v0 = reverse_simulate(observations[0][1], v_curr, t, cd, g)
         v_ms = round(v0.length() * 20)  # From v/tick to v/sec
 
-        # Outside these bounds, the velocity is absolutely off,
-        # so we cut our losses and avoid the expensive simulation.
-        # Additionally, cd and g are probably wrong too, so this makes
-        # the worst case scenario take less long.
-        if v_ms_range is not None:
-            if v_ms < v_ms_range[0] or v_ms > v_ms_range[1]:
-                continue
+        # Avoid simulating (expensive) if velocity is guaranteed to be wrong.
+        if v_ms_range and not (v_ms_range[0] <= v_ms <= v_ms_range[1]):
+            continue
 
         yaw, pitch = velocity_to_angles(v0)
-        # NOTE: length will mess with the simulation due to
-        # yaw/pitch being AT v0, not actual muzzle location.
-        cannon_candidate = Cannon(muzzle_pos, v_ms, 0, g, cd, yaw, pitch, 0, 0)
-        sim_ticks = s + offsets[-1]
-        sim_traj = simulate_trajectory(cannon_candidate, max_ticks=sim_ticks)
+        # length is 0 because angle is at muzzle location.
+        sim_traj = simulate_trajectory(
+            Cannon(muzzle_pos, v_ms, 0, g, cd, yaw, pitch, 0, 0),
+            max_ticks=t + offsets[-1],
+        )
 
-        rmse = compute_rmse(sim_traj, partial_trajectory, s, offsets)
-        if rmse < best["rmse"]:
-            best["rmse"] = rmse
-            best["stats"] = dict(
-                pos=muzzle_pos,
-                v_ms=v_ms,
-                g=g,
-                cd=cd,
-                yaw=yaw,
-                pitch=pitch,
-            )
+        rmse = compute_rmse(sim_traj, observations, t, offsets)
+        if rmse < best_rmse:
+            best_rmse = rmse
 
         # Good enough, we're satisfied.
-        if best["rmse"] < ACCEPTABLE_RMSE:
-            return best["stats"]
+        if best_rmse < ACCEPTABLE_RMSE:
+            return dict(pos=muzzle_pos, v_ms=v_ms, g=g, cd=cd, yaw=yaw, pitch=pitch)
 
-    return best["stats"]
+    return
 
 
 def perform_simulation(
@@ -538,7 +520,7 @@ def perform_simulation(
 
     results.update(dict(observed_trajectory=observed_trajectory))
     stats = estimate_muzzle(
-        partial_trajectory=observed_trajectory,
+        observations=observed_trajectory,
         v_ms_range=assumed_v_ms_range,
         cd=assumed_cd,
         g=assumed_g,

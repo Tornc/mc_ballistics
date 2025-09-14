@@ -29,9 +29,10 @@ DF_RADAR_SCAN_RATE: int = 2
 DF_RADAR_DROP_RATE: float = 0.2
 
 # DEFAULT: ESTIMATOR
-DF_ASSUMED_G = DF_CANNON_G
-DF_ASSUMED_CD = DF_CANNON_CD
-DF_ASSUMED_VELOCITY_RANGE: tuple[int, int] = (40, 320)
+# Note: these are the worst case assumptions (i.e. we don't know anything at all).
+DF_ASSUMED_G = None
+DF_ASSUMED_CD = None
+DF_ASSUMED_VELOCITY_RANGE: tuple[int, int] = (20, 500)
 DF_MAX_ASSUMED_VELOCITY: int = 1000
 
 # DEFAULT: ENVIRONMENT

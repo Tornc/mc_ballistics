@@ -1,12 +1,5 @@
 # Create: Big Cannons Cannon Doxxer
 
-<blockquote>
-  <details>
-    <summary><strong>🚧 Status: Work in Progress</strong></summary>
-    <strong>Heads up!</strong> The reverse calculator is a bit unreliable. And <code>simulation.py()</code> is an absolute mess.
-  </details>
-</blockquote> <br>
-
 A web-based ballistics simulation tool for the Create: Big Cannons addon. Visualise trajectories, calculate firing solutions and locate (enemy) cannon locations.
 
 Check it out at: https://tornc.github.io/mc_ballistics/.
@@ -74,6 +67,5 @@ The trajectory simulation's formulas used have been written by **@sashafiesta**,
 
 ## TODO
 
-- [ ] Clean up the simulation back-end.
-- [ ] Option to increase trajectory simulation fidelity (<1 ticks).
+- [ ] Implement halvings or ternary search for muzzle estimator.
 - [ ] Create a proper binary without: 1) Pyodide / package load times. 2) fugly Electron bar 

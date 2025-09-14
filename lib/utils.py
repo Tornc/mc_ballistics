@@ -24,6 +24,10 @@ def timed_function(fn):
     return wrap_function
 
 
+def clamp(val, min_val, max_val):
+    return min(max(min_val, val), max_val)
+
+
 def round_increment(number, increment):
     return round(number * (1 / increment)) / (1 / increment)
 
