@@ -5,8 +5,6 @@ from time import time
 from lib.utils import *
 
 EPSILON = 1e-12
-ACCEPTABLE_RMSE = 0.001
-LOW_ANGLE_THRESHOLD = 10
 
 
 @dataclass
@@ -252,9 +250,9 @@ def velocity_to_angles(vel: Vector) -> tuple[float, float]:
 
 def estimate_cd(velocities: list[int, Vector], g: float = None) -> float | None:
     if len(velocities) < 2:
-        return None
+        return
 
-    def calc_cdxz(v0c: float, v1c: float, dt: int):
+    def calc_cdxz(v0c: float, v1c: float, dt: int) -> float | None:
         if abs(v0c) > EPSILON and v1c * v0c > EPSILON:
             return (v1c / v0c) ** (1 / dt)
 
@@ -266,7 +264,7 @@ def estimate_cd(velocities: list[int, Vector], g: float = None) -> float | None:
     ) -> float | None:
         # No information to be gained, don't bother.
         if dt <= 0 or (abs(v0y) < EPSILON and abs(v1y) < EPSILON):
-            return None
+            return
 
         # Difference between predicted and observed vy
         def f(cd: float) -> float:
@@ -280,7 +278,7 @@ def estimate_cd(velocities: list[int, Vector], g: float = None) -> float | None:
         low, high = EPSILON, 1 - EPSILON
         f_low, f_high = f(low), f(high)
         if f_low * f_high > 0:
-            return None  # no guaranteed root
+            return  # no guaranteed root
 
         while high - low > EPSILON:
             middle = (low + high) / 2
@@ -292,6 +290,7 @@ def estimate_cd(velocities: list[int, Vector], g: float = None) -> float | None:
 
         return (low + high) / 2
 
+    low_angle_threshold = 10
     cd_candidates = []
     for i in range(len(velocities) - 1):
         dt, v0 = velocities[i]
@@ -309,7 +308,7 @@ def estimate_cd(velocities: list[int, Vector], g: float = None) -> float | None:
             # For flat angles, cdy becomes less reliable
             # while cdxz becomes a bit better.
             _, pitch = velocity_to_angles(v0)
-            if abs(pitch) <= LOW_ANGLE_THRESHOLD:
+            if abs(pitch) <= low_angle_threshold:
                 cdx = calc_cdxz(v0.x, v1.x, dt)
                 cdz = calc_cdxz(v0.z, v1.z, dt)
                 if cdx is not None:
@@ -318,7 +317,7 @@ def estimate_cd(velocities: list[int, Vector], g: float = None) -> float | None:
                     cd_candidates.append(cdz)
 
     if len(cd_candidates) == 0:
-        return None
+        return
 
     best = sorted(cd_candidates)[len(cd_candidates) // 2]  # Median
     return round_increment(best, EPSILON)
@@ -327,7 +326,7 @@ def estimate_cd(velocities: list[int, Vector], g: float = None) -> float | None:
 def estimate_g(velocities: list[tuple[int, Vector]], cd: float) -> float | None:
     # cd required, because vy = cd * vy - g
     if len(velocities) < 2:
-        return None
+        return
 
     g_candidates = []
     for i in range(len(velocities) - 1):
@@ -343,7 +342,7 @@ def estimate_g(velocities: list[tuple[int, Vector]], cd: float) -> float | None:
         g_candidates.append(g_val)
 
     if len(g_candidates) == 0:
-        return None
+        return
 
     # Median
     best = sorted(g_candidates)[len(g_candidates) // 2]
@@ -365,7 +364,7 @@ def reverse_simulate(
     return pos, vel
 
 
-def avg_to_inst_velocity(avg_vel: Vector, dt: int, cd: float, g: float):
+def avg_to_inst_velocity(avg_vel: Vector, dt: int, cd: float, g: float) -> Vector:
     """
     Average velocity (dt) converted to velocity at the start of the tick.
     """
@@ -402,7 +401,7 @@ def compute_rmse(
     if len(sim_traj) < t + last_offset + 1:
         return float("inf")
 
-    total_sq_error = 0.0
+    total_sq_error = 0
     for i in range(len(observations)):
         sim_idx = t + offsets[i]
         dpos = sim_traj[sim_idx][1].sub(observations[i][1])
@@ -441,6 +440,7 @@ def estimate_muzzle(
     offsets = [sec2tick(t - observations[0][0]) for t, _ in observations]
 
     best_rmse = float("inf")
+    acceptable_threshold = 0.001
     for t in range(0, tn):
         muzzle_pos, v0 = reverse_simulate(observations[0][1], v_curr, t, cd, g)
         v_ms = round(v0.length() * 20)  # From v/tick to v/sec
@@ -461,7 +461,7 @@ def estimate_muzzle(
             best_rmse = rmse
 
         # Good enough, we're satisfied.
-        if best_rmse < ACCEPTABLE_RMSE:
+        if best_rmse < acceptable_threshold:
             return dict(pos=muzzle_pos, v_ms=v_ms, g=g, cd=cd, yaw=yaw, pitch=pitch)
 
     return
