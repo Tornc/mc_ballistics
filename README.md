@@ -35,12 +35,12 @@ Check it out at: https://tornc.github.io/mc_ballistics/.
 
 I guess I got sidetracked 😅.
 
-Anyways, the initial goal was to make a proof of concept that demonstrated the possibility of automated counter-battery systems. This is done through a Some Peripherals' Radar or anything equivalent. The key requirement is that the peripheral has to **detect entities and record their position**.
+Anyways, the initial goal was to make a proof of concept that demonstrated the possibility of automated counter-battery systems. This is done through a Some Peripherals' Radar or anything equivalent. The key requirement is that the peripheral has to **detect entities and record their positions**.
 
 ## How to use
 
-1. Click on the 'Open in Streamlit' badge.
-2. Use the sidebar to set simulation parameters. The 'Calculator' section contains run-of-the-mill features for firing at coordinates. The 'Reverse calculator' is a bit more unique.
+1. Click on the link.
+2. Use the sidebar to set simulation parameters. The 'Calculator' section contains run-of-the-mill features for firing at coordinates. The 'Reverse calculator' is the one doing the 'doxxing'.
 3. The main view ('Plot' tab) displays an interactive 3D plot, in which you can move around with the camera.
 4. The 'Results' tab shows information required for firing solutions.
 
