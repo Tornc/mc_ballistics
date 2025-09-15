@@ -71,5 +71,6 @@ The trajectory simulation's formulas used have been written by **@sashafiesta**,
 
 ## TODO
 
+- [ ] Closed form solver instead of brute force simulation!!!!!
 - [ ] It'd be nice to explain how the muzzle locator function works conceptually with illustrations.
 - [ ] Create a proper binary without: 1) Pyodide / package load times. 2) fugly Electron bar 

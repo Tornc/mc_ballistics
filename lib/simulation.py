@@ -538,3 +538,54 @@ def perform_simulation(
         )
     )
     return results
+
+
+def forward_state(
+    p0: Vector, v0: Vector, cd: float, g: float, t: int
+) -> tuple[Vector, Vector]:
+    # No drag
+    if abs(1 - cd) < EPSILON:
+        vt = v0.copy()
+        vt.y -= g * t
+        av = v0.mul(t)
+        av.y -= g * t * (t - 1) / 2
+        pt = p0.add(av)
+        return pt, vt
+
+    cd_t = cd**t
+    S = (1 - cd_t) / (1 - cd)
+    # Velocity
+    vt = v0.mul(cd_t)
+    vt.y -= g * S
+    # Position
+    av = v0.mul(S)
+    av.y += (g / (1 - cd)) * (S - t)
+    pt = p0.add(av)
+
+    return pt, vt
+
+
+def inverse_state(
+    pt: Vector, vt: Vector, cd: float, g: float, t: int
+) -> tuple[Vector, Vector]:
+    # No drag
+    if abs(1 - cd) < EPSILON:
+        v0 = vt.copy()
+        v0.y += g * t
+        av = v0.mul(t)
+        av.y -= g * t * (t - 1) / 2
+        p0 = pt.sub(av)
+        return p0, v0
+
+    cd_t = cd**t
+    S = (1 - cd_t) / (1 - cd)
+    # Velocity
+    v0 = vt.copy()
+    v0.y += g * S
+    v0 = v0.div(cd_t)
+    # Position
+    av = v0.mul(S)
+    av.y += (g / (1 - cd)) * (S - t)
+    p0 = pt.sub(av)
+
+    return p0, v0
