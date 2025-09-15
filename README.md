@@ -67,5 +67,5 @@ The trajectory simulation's formulas used have been written by **@sashafiesta**,
 
 ## TODO
 
-- [ ] Implement halvings or ternary search for muzzle estimator.
+- [ ] It'd be nice to explain how the muzzle locator function works conceptually with illustrations.
 - [ ] Create a proper binary without: 1) Pyodide / package load times. 2) fugly Electron bar 

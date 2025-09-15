@@ -349,26 +349,11 @@ def estimate_g(velocities: list[tuple[int, Vector]], cd: float) -> float | None:
     return round_increment(best, EPSILON)
 
 
-def reverse_simulate(
-    posN: Vector, velN: Vector, t: int, cd: float, g: float
-) -> tuple[Vector, Vector]:
-    """
-    Simulates backwards from last observation for t ticks. Returns the
-    end position and velocity, which is possibly the starting state.
-    """
-    pos, vel = posN.copy(), velN.copy()
-    for _ in range(t):
-        vel.y += g
-        vel = vel.div(cd)
-        pos = pos.sub(vel)
-    return pos, vel
-
-
-def avg_to_inst_velocity(avg_vel: Vector, dt: int, cd: float, g: float) -> Vector:
+def avg_to_inst_velocity(dt: int, vel: Vector, cd: float, g: float) -> Vector:
     """
     Average velocity (dt) converted to velocity at the start of the tick.
     """
-    result = avg_vel.copy()
+    result = vel.copy()
     if dt <= 0:
         return result
 
@@ -385,6 +370,14 @@ def avg_to_inst_velocity(avg_vel: Vector, dt: int, cd: float, g: float) -> Vecto
     else:
         result.y += g * (dt - 1) / 2
         return result
+
+
+def reverse_step(pos: Vector, vel: Vector, cd: float, g: float):
+    # A single step of simulate trajectory, but in reverse.
+    vel.y += g
+    vel = vel.div(cd)
+    pos = pos.sub(vel)
+    return pos, vel
 
 
 def compute_rmse(
@@ -410,60 +403,55 @@ def compute_rmse(
     return math.sqrt(total_sq_error / len(observations))
 
 
-# TODO: implement halvings or ternary search. Time will literally be cut
-# in half.
 def estimate_muzzle(
     observations: list[tuple[float, Vector]],
-    v_ms_range: tuple[int, int],
+    min_vms: int = None,
+    max_vms: int = None,
     cd: float = None,
     g: float = None,
     tn: int = 750,
 ):
-    # 2 datapoints is enough if drag and gravity are already known.
-    # 3 is enough, but weird things may still happen with cd and g estimation.
+    # 2 datapoints is enough only if drag and gravity are already known.
     if len(observations) < 2:
         return
 
-    obs_v = calculate_velocities(observations)
+    min_vms = min_vms if min_vms is not None else 0
+    max_vms = max_vms if max_vms is not None else 10**9  # Supposed to be infinite.
+
+    velocities = calculate_velocities(observations)
     # If cd or g are unknown, we use a fallback system to infer the values.
     # Note: the fallback can fail.
-    cd = estimate_cd(obs_v, g) if cd is None else cd
-    if cd is None:
-        return
-    g = estimate_g(obs_v, cd) if g is None else g
-    if g is None:
-        return
+    cd = cd if cd is not None else estimate_cd(velocities, g)
+    g = g if g is not None else estimate_g(velocities, cd)
+    if cd is None or g is None:
+        return None
 
-    first_dt, first_avg_vel = obs_v[0]
-    v_curr = avg_to_inst_velocity(first_avg_vel, first_dt, cd, g)
-    # compute tick offsets for each observation relative to the first observed time
+    earliest_vel = avg_to_inst_velocity(velocities[0][0], velocities[0][1], cd, g)
+    # tick offsets for each observation relative to the first observed time
     offsets = [sec2tick(t - observations[0][0]) for t, _ in observations]
 
     best_rmse = float("inf")
     acceptable_threshold = 0.001
+    pos, vel = observations[0][1], earliest_vel
     for t in range(0, tn):
-        muzzle_pos, v0 = reverse_simulate(observations[0][1], v_curr, t, cd, g)
-        v_ms = round(v0.length() * 20)  # From v/tick to v/sec
+        vms = round(vel.length() * 20)  # From v/tick to v/sec
+        if vms > max_vms:
+            break  # Will only grow in value as t increases. Give up.
 
-        # Avoid simulating (expensive) if velocity is guaranteed to be wrong.
-        if v_ms_range and not (v_ms_range[0] <= v_ms <= v_ms_range[1]):
-            continue
-
-        yaw, pitch = velocity_to_angles(v0)
-        # length is 0 because angle is at muzzle location.
-        sim_traj = simulate_trajectory(
-            Cannon(muzzle_pos, v_ms, 0, g, cd, yaw, pitch, 0, 0),
-            max_ticks=t + offsets[-1],
-        )
-
-        rmse = compute_rmse(sim_traj, observations, t, offsets)
-        if rmse < best_rmse:
-            best_rmse = rmse
-
-        # Good enough, we're satisfied.
-        if best_rmse < acceptable_threshold:
-            return dict(pos=muzzle_pos, v_ms=v_ms, g=g, cd=cd, yaw=yaw, pitch=pitch)
-
+        # Only simulate forward if velocity is within bounds.
+        if min_vms <= vms:
+            yaw, pitch = velocity_to_angles(vel)
+            # Remember: at muzzle, so length is 0.
+            sim_traj = simulate_trajectory(
+                Cannon(pos, vms, 0, g, cd, yaw, pitch, 0, 0),
+                max_ticks=t + offsets[-1],
+            )
+            best_rmse = min(best_rmse, compute_rmse(sim_traj, observations, t, offsets))
+            if best_rmse < acceptable_threshold:
+                return dict(pos=pos, v_ms=vms, g=g, cd=cd, yaw=yaw, pitch=pitch)
+        
+        # Continue simulating backward.
+        pos, vel = reverse_step(pos, vel, cd, g)
     return
 
 
@@ -519,9 +507,12 @@ def perform_simulation(
         return results
 
     results.update(dict(observed_trajectory=observed_trajectory))
+
+    minvms, maxvms = (None, None) if assumed_v_ms_range is None else assumed_v_ms_range
     stats = estimate_muzzle(
         observations=observed_trajectory,
-        v_ms_range=assumed_v_ms_range,
+        min_vms=minvms,
+        max_vms=maxvms,
         cd=assumed_cd,
         g=assumed_g,
     )

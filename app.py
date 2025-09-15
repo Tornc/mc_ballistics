@@ -100,6 +100,9 @@ init_state()
 sidebar()
 generate_statistics()
 
+if ssg("perform_estimation") and ssg("statistics").get("est_muzzle_pos") is None:
+    st.toast("Muzzle estimation failed!")
+
 tab1, tab2 = st.tabs(["Plot", "Results"])
 with tab1:
     plot(generate_figure())
