@@ -37,6 +37,10 @@ Anyways, the initial goal was to make a proof of concept that demonstrated the p
 3. The main view ('Plot' tab) displays an interactive 3D plot, in which you can move around with the camera.
 4. The 'Results' tab shows information required for firing solutions.
 
+## How the estimator works
+
+
+
 ## Installation
 
 1. Download the repository.

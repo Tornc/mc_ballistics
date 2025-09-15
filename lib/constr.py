@@ -29,10 +29,10 @@ DF_RADAR_SCAN_RATE: int = 2
 DF_RADAR_DROP_RATE: float = 0.2
 
 # DEFAULT: ESTIMATOR
-# Note: these are the worst case assumptions (i.e. we don't know anything at all).
-DF_ASSUMED_G = None
-DF_ASSUMED_CD = None
-DF_ASSUMED_VELOCITY_RANGE: tuple[int, int] = (20, 500)
+DF_ASSUMED_G = DF_CANNON_G
+DF_ASSUMED_CD = DF_CANNON_CD
+DF_ASSUMED_VELOCITY_RANGE: tuple[int, int] = (40, 320)
+DF_ASSUMED_VELOCITY_MULTIPLE: int = 40
 DF_MAX_ASSUMED_VELOCITY: int = 1000
 
 # DEFAULT: ENVIRONMENT
@@ -49,6 +49,7 @@ def sset(key: str, default):
     st.session_state[key] = (
         st.session_state[key] if key in st.session_state else default
     )
+
 
 def init_state():
     # INITIAL: CANNON
@@ -77,6 +78,7 @@ def init_state():
     sset("assumed_cd", DF_ASSUMED_CD)
     sset("assumed_g", DF_ASSUMED_G)
     sset("assumed_velocity_range", DF_ASSUMED_VELOCITY_RANGE)
+    sset("assumed_velocity_multiple", DF_ASSUMED_VELOCITY_MULTIPLE)
     # INITIAL: MISC
     sset("manual_fire", DF_MANUAL_FIRE)
     sset("trajectory_type", DF_TRAJECTORY_TYPE)

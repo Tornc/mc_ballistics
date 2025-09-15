@@ -407,9 +407,10 @@ def estimate_muzzle(
     observations: list[tuple[float, Vector]],
     min_vms: int = None,
     max_vms: int = None,
+    vms_multiple: int = None,
     cd: float = None,
     g: float = None,
-    tn: int = 750,
+    max_t: int = 750,
 ):
     # 2 datapoints is enough only if drag and gravity are already known.
     if len(observations) < 2:
@@ -433,13 +434,14 @@ def estimate_muzzle(
     best_rmse = float("inf")
     acceptable_threshold = 0.001
     pos, vel = observations[0][1], earliest_vel
-    for t in range(0, tn):
+    for t in range(0, max_t):
         vms = round(vel.length() * 20)  # From v/tick to v/sec
+
+        # Only simulate forward if velocity is plausible.
         if vms > max_vms:
             break  # Will only grow in value as t increases. Give up.
 
-        # Only simulate forward if velocity is within bounds.
-        if min_vms <= vms:
+        if min_vms <= vms and (vms_multiple is None or vms % vms_multiple == 0):
             yaw, pitch = velocity_to_angles(vel)
             # Remember: at muzzle, so length is 0.
             sim_traj = simulate_trajectory(
@@ -448,8 +450,8 @@ def estimate_muzzle(
             )
             best_rmse = min(best_rmse, compute_rmse(sim_traj, observations, t, offsets))
             if best_rmse < acceptable_threshold:
-                return dict(pos=pos, v_ms=vms, g=g, cd=cd, yaw=yaw, pitch=pitch)
-        
+                return dict(cd=cd, g=g, pitch=pitch, pos=pos, t=t, v_ms=vms, yaw=yaw)
+
         # Continue simulating backward.
         pos, vel = reverse_step(pos, vel, cd, g)
     return
@@ -465,6 +467,7 @@ def perform_simulation(
     assumed_cd: float = None,
     assumed_g: float = None,
     assumed_v_ms_range: tuple[int, int] = None,
+    assumed_v_ms_multiple: int = None,
 ):
     results = dict()
 
@@ -508,11 +511,13 @@ def perform_simulation(
 
     results.update(dict(observed_trajectory=observed_trajectory))
 
+    # I don't want to touch the frontend anymore 💀
     minvms, maxvms = (None, None) if assumed_v_ms_range is None else assumed_v_ms_range
     stats = estimate_muzzle(
         observations=observed_trajectory,
         min_vms=minvms,
         max_vms=maxvms,
+        vms_multiple=assumed_v_ms_multiple,
         cd=assumed_cd,
         g=assumed_g,
     )
@@ -522,13 +527,14 @@ def perform_simulation(
     est_muzzle_pos = stats["pos"]
     results.update(
         dict(
-            est_muzzle_pos=est_muzzle_pos,
-            est_v_ms=stats["v_ms"],
-            est_g=stats["g"],
-            est_cd=stats["cd"],
-            est_yaw=stats["yaw"],
-            est_pitch=stats["pitch"],
             error_est_muzzle_pos=muzzle_pos.sub(est_muzzle_pos).length(),
+            est_cd=stats["cd"],
+            est_g=stats["g"],
+            est_muzzle_pos=est_muzzle_pos,
+            est_pitch=stats["pitch"],
+            est_t=stats["t"],
+            est_v_ms=stats["v_ms"],
+            est_yaw=stats["yaw"],
         )
     )
     return results

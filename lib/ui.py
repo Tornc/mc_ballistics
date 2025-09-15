@@ -140,7 +140,7 @@ def sett_clc_cannon():
 def sett_rev_cannon(disable: bool):
     st.text(
         "Assumed cannon stats",
-        help="Leave empty if unknown, but reliability will take a hit.",
+        help="Leave empty if unknown, but reliability (and speed) will take a hit.",
     )
     with st.container(border=True):
         st.number_input(
@@ -165,9 +165,21 @@ def sett_rev_cannon(disable: bool):
             step=0.01,
             value=None,
         )
+        st.number_input(
+            disabled=disable,
+            help=f"{DF_ASSUMED_VELOCITY_MULTIPLE} for big cannons.",
+            key="assumed_velocity_multiple",
+            label="Smallest velocity unit (m/s)",
+            max_value=DF_MAX_ASSUMED_VELOCITY,
+            min_value=1,
+            placeholder=f"{DF_CANNON_G}",
+            step=1,
+            value=None,
+        )
+        # TODO: might want to adjust min max according to assumed_velocity_multiple
         st.slider(
             disabled=disable,
-            help=f"{DF_ASSUMED_VELOCITY_RANGE} for big cannons, helps estimator prune bogus results.",
+            help=f"{DF_ASSUMED_VELOCITY_RANGE} for big cannons, speeds up estimator massively.",
             key="assumed_velocity_range",
             label="Velocity range (m/s)",
             max_value=DF_MAX_ASSUMED_VELOCITY,
@@ -282,6 +294,7 @@ def sidebar():
                     assumed_cd=ssg("assumed_cd"),
                     assumed_g=ssg("assumed_g"),
                     assumed_v_ms_range=ssg("assumed_velocity_range"),
+                    assumed_v_ms_multiple=ssg("assumed_velocity_multiple"),
                 )
             sett_rev_cannon(not ssg("perform_estimation"))
             sett_rev_radar(not ssg("perform_estimation"))
@@ -298,7 +311,7 @@ def plot(fig):
 def res_cannon():
     st.text("Cannon")
 
-    stats:dict = ssg("statistics")
+    stats: dict = ssg("statistics")
     # I hate this.
     yaw = stats.get("yaw")
     pitch = stats.get("pitch")
@@ -338,6 +351,7 @@ def res_reverse():
     n_obs = stats.get("n_obs")
     est_muzzle_pos = stats.get("est_muzzle_pos")
     error_est_muzzle_pos = stats.get("error_est_muzzle_pos")
+    est_t = stats.get("est_t")
     est_v_ms = stats.get("est_v_ms")
     est_cd = stats.get("est_cd")
     est_g = stats.get("est_g")
@@ -367,6 +381,7 @@ def res_reverse():
         "\# of observations": n_obs,
         "Muzzle position": est_muzzle_pos,
         "Muzzle position error": error_est_muzzle_pos,
+        "Flight time at 1st observation": est_t,
         "Shell velocity": est_v_ms,
         "Drag coefficient": est_cd,
         "Gravity": est_g,

@@ -81,6 +81,7 @@ def generate_statistics():
         assumed_cd=ssg("assumed_cd"),
         assumed_g=ssg("assumed_g"),
         assumed_v_ms_range=ssg("assumed_velocity_range"),
+        assumed_v_ms_multiple=ssg("assumed_velocity_multiple"),
     )
 
 
@@ -108,3 +109,6 @@ with tab1:
     plot(generate_figure())
 with tab2:
     results()
+
+
+# TODO: implement vms_multiple input, call it the smallest velocity unit or sth.
