@@ -71,7 +71,7 @@ Or run `script.cmd` (it does the exact same thing as `streamlit run app.py`).
 
 **@malexy**: Major inspiration was taken from [brute-force pitch calculator](https://github.com/Malex21/CreateBigCannons-BallisticCalculator) while I was still figuring things out.
 
-**@endal**: My own pitch calculator is based entirely on their [Desmos calculator](https://www.desmos.com/calculator/az4angyumw). It's very fast and laser-accurate.
+**@endal**: The pitch calculator is based entirely on their [Desmos calculator](https://www.desmos.com/calculator/az4angyumw). It's very fast and laser-accurate.
 
 If you're interested in CBC ballistics, I highly recommend taking a look at their works.
 
