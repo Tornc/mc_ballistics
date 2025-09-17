@@ -73,6 +73,9 @@ class Vector:
 
     def length(self):
         return math.sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
+    
+    def normalise(self):
+        return self.mul(1 / self.length())
 
     def round(self, tol: float = 1):
         return Vector(

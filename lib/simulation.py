@@ -513,10 +513,10 @@ def perform_simulation(
 
     # I don't want to touch the frontend anymore 💀
     minvms, maxvms = (None, None) if assumed_v_ms_range is None else assumed_v_ms_range
-    stats = estimate_muzzle(
+    stats = estimate_muzzle2(
         observations=observed_trajectory,
-        min_vms=minvms,
-        max_vms=maxvms,
+        min_v=minvms,
+        max_v=maxvms,
         vms_multiple=assumed_v_ms_multiple,
         cd=assumed_cd,
         g=assumed_g,
@@ -538,6 +538,110 @@ def perform_simulation(
         )
     )
     return results
+
+
+def calculate_velocities2(
+    observations: list[tuple[int, Vector]],
+) -> list[tuple[int, Vector]]:
+    """
+    Note that this will return list of len(observations) - 1.
+    """
+    velocities = []
+    for i in range(len(observations) - 1):
+        t0, p0 = observations[i]
+        t1, p1 = observations[i + 1]
+        dt = t1 - t0
+        if dt <= 0:
+            continue
+        vel = p1.sub(p0).div(dt)
+        velocities.append((dt, vel))
+    return velocities
+
+
+def calculate_error(
+    sim_traj: list[tuple[int, Vector]],
+    observations: list[tuple[int, Vector]],
+    t: int,
+) -> float:
+    # We can get away with using something simple like this
+    # because we're only looking for the exact fit.
+    total_error = 0
+    for i in range(len(observations)):
+        sim_idx = t + observations[i][0]
+        dpos = sim_traj[sim_idx][1].sub(observations[i][1])
+        total_error += dpos.length()
+    return total_error
+
+
+def estimate_muzzle2(
+    observations: list[tuple[float, Vector]],
+    min_v: int = None,
+    max_v: int = None,
+    vms_multiple: int = None,
+    cd: float = None,
+    g: float = None,
+    max_t: int = 750,
+):
+    # 2 datapoints is enough only if drag and gravity are already known.
+    if len(observations) < 2:
+        return
+
+    # b/s -> b/t
+    min_v: float = min_v / 20 if min_v is not None else 0
+    max_v: float = max_v / 20 if max_v is not None else 10**9  # Treat as infinite.
+    v_multiple: float = vms_multiple / 20 if vms_multiple is not None else None
+
+    # Normalise the timestamps by making everything relative to first observation.
+    t0 = observations[0][0]
+    nsd_obs = [(sec2tick(t - t0), p) for t, p in observations]
+
+    velocities = calculate_velocities2(nsd_obs)
+    # If cd or g are unknown, we use a fallback system to infer the values.
+    # Note: the fallback can fail.
+    cd = cd if cd is not None else estimate_cd(velocities, g)
+    g = g if g is not None else estimate_g(velocities, cd)
+    if cd is None or g is None:
+        return None
+
+    earliest_vel = avg_to_inst_velocity(velocities[0][0], velocities[0][1], cd, g)
+
+    acceptable_threshold = 0.001
+    pos, vel = nsd_obs[0][1], earliest_vel
+    es = []
+    for t in range(0, max_t):
+        v_len = vel.length()
+        v_lenr = round_increment(v_len, 0.05)  # TODO: why is this so fucked up?
+        # Only simulate forward if velocity is plausible.
+        if v_lenr > max_v:
+            break  # Will only grow in value as t increases. Give up.
+
+        if min_v <= v_lenr and (v_multiple is None or v_lenr % v_multiple == 0):
+            # Really fucking important! (length of vel * 20 must be a whole number)
+            nrvel = vel.mul(v_len / v_lenr)
+            sim_traj = simulate_forward(pos, nrvel, cd, g, t + nsd_obs[-1][0])
+            # TODO: incorporate forward_state
+            error = calculate_error(sim_traj, nsd_obs, t)
+            if error < acceptable_threshold:
+                yaw, pitch = velocity_to_angles(nrvel)
+                return dict(
+                    cd=cd, g=g, pitch=pitch, pos=pos, t=t, v_ms=v_lenr * 20, yaw=yaw
+                )
+
+        # Continue simulating backward.
+        pos, vel = reverse_step(pos, vel, cd, g)
+    return es
+
+
+def simulate_forward(p: Vector, v: Vector, cd: float, g: float, t: int):
+    pos = p.copy()
+    vel = v.copy()
+    trajectory = []
+    for t in range(t + 1):
+        trajectory.append((t, pos.copy()))
+        pos = pos.add(vel)
+        vel = vel.mul(cd)
+        vel.y -= g
+    return trajectory
 
 
 def forward_state(
