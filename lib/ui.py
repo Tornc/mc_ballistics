@@ -169,17 +169,17 @@ def sett_rev_cannon(disable: bool):
             disabled=disable,
             help=f"{DF_ASSUMED_VELOCITY_MULTIPLE} for big cannons.",
             key="assumed_velocity_multiple",
-            label="Smallest velocity unit (m/s)",
+            label="Smallest velocity multiple (m/s)",
             max_value=DF_MAX_ASSUMED_VELOCITY,
             min_value=1,
-            placeholder=f"{DF_CANNON_G}",
-            step=1,
+            placeholder=f"{DF_ASSUMED_VELOCITY_MULTIPLE}",
+            step=10,
             value=None,
         )
         # TODO: might want to adjust min max according to assumed_velocity_multiple
         st.slider(
             disabled=disable,
-            help=f"{DF_ASSUMED_VELOCITY_RANGE} for big cannons, speeds up estimator massively.",
+            help=f"{DF_ASSUMED_VELOCITY_RANGE} for big cannons.",
             key="assumed_velocity_range",
             label="Velocity range (m/s)",
             max_value=DF_MAX_ASSUMED_VELOCITY,
@@ -343,7 +343,7 @@ def res_cannon():
 
 def res_reverse():
     st.text(
-        "Estimator", help="These values are derived from samples obtained by radar."
+        "Estimator", help="These values are derived from samples obtained by the radar."
     )
 
     stats: dict = ssg("statistics")
@@ -378,7 +378,7 @@ def res_reverse():
         est_pitch=est_pitch,
     )
     data = {
-        "\# of observations": n_obs,
+        "\\# of observations": n_obs,
         "Muzzle position": est_muzzle_pos,
         "Muzzle position error": error_est_muzzle_pos,
         "Flight time at 1st observation": est_t,

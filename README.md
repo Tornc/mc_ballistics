@@ -4,6 +4,13 @@ A ballistics simulation tool for the [Create: Big Cannons](https://modrinth.com/
 
 Check it out at: https://tornc.github.io/mc_ballistics/.
 
+## How to use
+
+1. Click on the link.
+2. Use the sidebar to set simulation parameters. The 'Calculator' section contains run-of-the-mill features for firing at coordinates. The 'Reverse calculator' is the one doing the 'doxxing'.
+3. The main view ('Plot' tab) displays an interactive 3D plot, in which you can move around with the camera.
+4. The 'Results' tab shows information required for firing solutions.
+
 ---
 
 ![pic1](./docs/calculator.png)
@@ -21,13 +28,6 @@ Check it out at: https://tornc.github.io/mc_ballistics/.
         Enemy cannon muzzle locator (left) and firing solution information (right).
     </em>
 </p>
-
-## How to use
-
-1. Click on the link.
-2. Use the sidebar to set simulation parameters. The 'Calculator' section contains run-of-the-mill features for firing at coordinates. The 'Reverse calculator' is the one doing the 'doxxing'.
-3. The main view ('Plot' tab) displays an interactive 3D plot, in which you can move around with the camera.
-4. The 'Results' tab shows information required for firing solutions.
 
 ## Why?
 
@@ -77,7 +77,7 @@ If you're interested in CBC ballistics, I highly recommend taking a look at thei
 
 ## TODO
 
-- [ ] Closed form solver instead of brute force simulation!!!!!
+- [ ] Commenting in simulation.py
 - [ ] It'd be nice to explain how the muzzle locator function works conceptually with illustrations.
 - [ ] Link the specific Discord message.
 - [ ] Create a proper binary without: 1) Pyodide / package load times. 2) fugly Electron bar

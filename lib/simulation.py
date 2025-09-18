@@ -6,6 +6,8 @@ from lib.utils import *
 
 EPSILON = 1e-12
 
+# === General ===
+
 
 @dataclass
 class Cannon:
@@ -26,6 +28,92 @@ class Radar:
     range: int
     scan_rate: int
     drop_rate: float
+
+
+def perform_simulation(
+    cannon: Cannon,
+    target_pos: Vector,
+    fire_at_target: bool = True,
+    trajectory_type: str = "low",
+    perform_estimation: bool = False,
+    radar: Radar = None,
+    assumed_cd: float = None,
+    assumed_g: float = None,
+    assumed_v_ms_range: tuple[int, int] = None,
+    assumed_v_ms_multiple: int = None,
+):
+    results = dict()
+
+    trajectory = []
+    if not fire_at_target:
+        trajectory = simulate_trajectory(cannon, stop_y=target_pos.y)
+        results.update(dict(yaw=cannon.yaw, pitch=cannon.pitch))
+    else:
+        yaw, pitch, t = calculate_yaw_pitch_t(
+            cannon, target_pos, trajectory_type == "low"
+        )
+        if yaw is not None and pitch is not None and t is not None:
+            if pitch >= cannon.min_pitch and pitch <= cannon.max_pitch:
+                cannon.yaw, cannon.pitch, max_ticks = yaw, pitch, round(t)
+                trajectory = simulate_trajectory(cannon, max_ticks=max_ticks)
+
+        results.update(dict(yaw=yaw, pitch=pitch))
+
+    if len(trajectory) == 0:
+        return results
+
+    muzzle_pos = trajectory[0][1]
+    tn, pos = trajectory[-1]
+    results.update(
+        dict(
+            trajectory=trajectory,
+            muzzle_pos=muzzle_pos,
+            flight_time=tn,
+            impact_pos=pos,
+            error_impact=pos.sub(target_pos).length(),
+        )
+    )
+
+    if not perform_estimation:
+        return results
+
+    observed_trajectory = get_observed_trajectory(trajectory, radar)
+    results.update(dict(n_obs=len(observed_trajectory)))
+    if len(observed_trajectory) == 0:
+        return results
+
+    results.update(dict(observed_trajectory=observed_trajectory))
+
+    # I don't want to touch the frontend anymore 💀
+    minvms, maxvms = (None, None) if assumed_v_ms_range is None else assumed_v_ms_range
+    stats = estimate_muzzle(
+        observations=observed_trajectory,
+        min_v=minvms,
+        max_v=maxvms,
+        vms_multiple=assumed_v_ms_multiple,
+        cd=assumed_cd,
+        g=assumed_g,
+    )
+    if stats is None:
+        return results
+
+    est_muzzle_pos = stats["pos"]
+    results.update(
+        dict(
+            error_est_muzzle_pos=muzzle_pos.sub(est_muzzle_pos).length(),
+            est_cd=stats["cd"],
+            est_g=stats["g"],
+            est_muzzle_pos=est_muzzle_pos,
+            est_pitch=stats["pitch"],
+            est_t=stats["t"],
+            est_v_ms=stats["v_ms"],
+            est_yaw=stats["yaw"],
+        )
+    )
+    return results
+
+
+# === Simulation ===
 
 
 def solve_pitch(
@@ -221,31 +309,23 @@ def get_observed_trajectory(
     return items
 
 
-def calculate_velocities(
-    observations: list[tuple[float, Vector]],
-) -> list[tuple[int, Vector]]:
+# === Reverse-location ===
+
+
+def calculate_velocities(obs: list[tuple[int, Vector]]) -> list[tuple[int, Vector]]:
     """
-    Note that this will return list of len(datapoints) - 1, because we can't know
-    the velocity of the first observation. Also, dt is in ticks, not seconds.
+    Note that this will return list of len(observations) - 1.
     """
     velocities = []
-    for i in range(len(observations) - 1):
-        t0, p0 = observations[i]
-        t1, p1 = observations[i + 1]
-        dt = sec2tick(t1 - t0)  # You never know what in-game lag will do.
+    for i in range(len(obs) - 1):
+        t0, p0 = obs[i]
+        t1, p1 = obs[i + 1]
+        dt = t1 - t0
         if dt <= 0:
             continue
         vel = p1.sub(p0).div(dt)
         velocities.append((dt, vel))
     return velocities
-
-
-def velocity_to_angles(vel: Vector) -> tuple[float, float]:
-    horiz = math.hypot(vel.x, vel.z) + EPSILON
-    pitch = math.degrees(math.atan2(vel.y, horiz))
-    yaw = -math.degrees(math.atan2(vel.x, vel.z))
-    yaw = (yaw + 360) % 360  # -180, 180 => 0, 360
-    return yaw, pitch
 
 
 def estimate_cd(velocities: list[int, Vector], g: float = None) -> float | None:
@@ -372,177 +452,28 @@ def avg_to_inst_velocity(dt: int, vel: Vector, cd: float, g: float) -> Vector:
         return result
 
 
-def reverse_step(pos: Vector, vel: Vector, cd: float, g: float):
+def step_backward(pos: Vector, vel: Vector, cd: float, g: float):
     # A single step of simulate trajectory, but in reverse.
-    vel.y += g
-    vel = vel.div(cd)
-    pos = pos.sub(vel)
-    return pos, vel
+    p, v = pos.copy(), vel.copy()
+    v.y += g
+    v = v.div(cd)
+    p = p.sub(v)
+    return p, v
 
 
-def compute_rmse(
-    sim_traj: list[tuple[float, Vector]],
-    observations: list[tuple[float, Vector]],
-    t: int,
-    offsets: list[int],
-) -> float:
-    """
-    See how well the forward simulated points match up with the
-    observed points by calculating the root mean square error.
-    """
-    last_offset = offsets[-1]
-    if len(sim_traj) < t + last_offset + 1:
-        return float("inf")
-
-    total_sq_error = 0
-    for i in range(len(observations)):
-        sim_idx = t + offsets[i]
-        dpos = sim_traj[sim_idx][1].sub(observations[i][1])
-        total_sq_error += dpos.dot(dpos)
-
-    return math.sqrt(total_sq_error / len(observations))
-
-
-def estimate_muzzle(
-    observations: list[tuple[float, Vector]],
-    min_vms: int = None,
-    max_vms: int = None,
-    vms_multiple: int = None,
-    cd: float = None,
-    g: float = None,
-    max_t: int = 750,
-):
-    # 2 datapoints is enough only if drag and gravity are already known.
-    if len(observations) < 2:
-        return
-
-    min_vms = min_vms if min_vms is not None else 0
-    max_vms = max_vms if max_vms is not None else 10**9  # Supposed to be infinite.
-
-    velocities = calculate_velocities(observations)
-    # If cd or g are unknown, we use a fallback system to infer the values.
-    # Note: the fallback can fail.
-    cd = cd if cd is not None else estimate_cd(velocities, g)
-    g = g if g is not None else estimate_g(velocities, cd)
-    if cd is None or g is None:
-        return None
-
-    earliest_vel = avg_to_inst_velocity(velocities[0][0], velocities[0][1], cd, g)
-    # tick offsets for each observation relative to the first observed time
-    offsets = [sec2tick(t - observations[0][0]) for t, _ in observations]
-
-    best_rmse = float("inf")
-    acceptable_threshold = 0.001
-    pos, vel = observations[0][1], earliest_vel
-    for t in range(0, max_t):
-        vms = round(vel.length() * 20)  # From v/tick to v/sec
-
-        # Only simulate forward if velocity is plausible.
-        if vms > max_vms:
-            break  # Will only grow in value as t increases. Give up.
-
-        if min_vms <= vms and (vms_multiple is None or vms % vms_multiple == 0):
-            yaw, pitch = velocity_to_angles(vel)
-            # Remember: at muzzle, so length is 0.
-            sim_traj = simulate_trajectory(
-                Cannon(pos, vms, 0, g, cd, yaw, pitch, 0, 0),
-                max_ticks=t + offsets[-1],
-            )
-            best_rmse = min(best_rmse, compute_rmse(sim_traj, observations, t, offsets))
-            if best_rmse < acceptable_threshold:
-                return dict(cd=cd, g=g, pitch=pitch, pos=pos, t=t, v_ms=vms, yaw=yaw)
-
-        # Continue simulating backward.
-        pos, vel = reverse_step(pos, vel, cd, g)
-    return
-
-
-def perform_simulation(
-    cannon: Cannon,
-    target_pos: Vector,
-    fire_at_target: bool = True,
-    trajectory_type: str = "low",
-    perform_estimation: bool = False,
-    radar: Radar = None,
-    assumed_cd: float = None,
-    assumed_g: float = None,
-    assumed_v_ms_range: tuple[int, int] = None,
-    assumed_v_ms_multiple: int = None,
-):
-    results = dict()
-
-    trajectory = []
-    if not fire_at_target:
-        trajectory = simulate_trajectory(cannon, stop_y=target_pos.y)
-        results.update(dict(yaw=cannon.yaw, pitch=cannon.pitch))
-    else:
-        yaw, pitch, t = calculate_yaw_pitch_t(
-            cannon, target_pos, trajectory_type == "low"
-        )
-        if yaw is not None and pitch is not None and t is not None:
-            if pitch >= cannon.min_pitch and pitch <= cannon.max_pitch:
-                cannon.yaw, cannon.pitch, max_ticks = yaw, pitch, round(t)
-                trajectory = simulate_trajectory(cannon, max_ticks=max_ticks)
-
-        results.update(dict(yaw=yaw, pitch=pitch))
-
-    if len(trajectory) == 0:
-        return results
-
-    muzzle_pos = trajectory[0][1]
-    tn, pos = trajectory[-1]
-    results.update(
-        dict(
-            trajectory=trajectory,
-            muzzle_pos=muzzle_pos,
-            flight_time=tn,
-            impact_pos=pos,
-            error_impact=pos.sub(target_pos).length(),
-        )
-    )
-
-    if not perform_estimation:
-        return results
-
-    observed_trajectory = get_observed_trajectory(trajectory, radar)
-    results.update(dict(n_obs=len(observed_trajectory)))
-    if len(observed_trajectory) == 0:
-        return results
-
-    results.update(dict(observed_trajectory=observed_trajectory))
-
-    # I don't want to touch the frontend anymore 💀
-    minvms, maxvms = (None, None) if assumed_v_ms_range is None else assumed_v_ms_range
-    stats = estimate_muzzle(
-        observations=observed_trajectory,
-        min_vms=minvms,
-        max_vms=maxvms,
-        vms_multiple=assumed_v_ms_multiple,
-        cd=assumed_cd,
-        g=assumed_g,
-    )
-    if stats is None:
-        return results
-
-    est_muzzle_pos = stats["pos"]
-    results.update(
-        dict(
-            error_est_muzzle_pos=muzzle_pos.sub(est_muzzle_pos).length(),
-            est_cd=stats["cd"],
-            est_g=stats["g"],
-            est_muzzle_pos=est_muzzle_pos,
-            est_pitch=stats["pitch"],
-            est_t=stats["t"],
-            est_v_ms=stats["v_ms"],
-            est_yaw=stats["yaw"],
-        )
-    )
-    return results
+def step_forward(pos: Vector, vel: Vector, cd: float, g: float):
+    # A single step of simulate_trajectory()
+    p, v = pos.copy(), vel.copy()
+    p = p.add(v)
+    v = v.mul(cd)
+    v.y -= g
+    return p, v
 
 
 def forward_state(
     p0: Vector, v0: Vector, cd: float, g: float, t: int
 ) -> tuple[Vector, Vector]:
+    # Closed form of simulate_trajectory()
     # No drag
     if abs(1 - cd) < EPSILON:
         vt = v0.copy()
@@ -561,31 +492,99 @@ def forward_state(
     av = v0.mul(S)
     av.y += (g / (1 - cd)) * (S - t)
     pt = p0.add(av)
-
     return pt, vt
 
 
-def inverse_state(
-    pt: Vector, vt: Vector, cd: float, g: float, t: int
-) -> tuple[Vector, Vector]:
-    # No drag
-    if abs(1 - cd) < EPSILON:
-        v0 = vt.copy()
-        v0.y += g * t
-        av = v0.mul(t)
-        av.y -= g * t * (t - 1) / 2
-        p0 = pt.sub(av)
-        return p0, v0
+def evaluate(
+    obs: list[tuple[int, Vector]],
+    p0: Vector,
+    v0: Vector,
+    cd: float,
+    g: float,
+    t0: int,
+    threshold: float,
+) -> bool:
+    pos, vel = p0.copy(), v0.copy()
+    prev_t = t0
+    for t, p in obs:
+        dt = t - prev_t
+        if dt == 1:
+            pos, vel = step_forward(pos, vel, cd, g)
+        else:
+            pos, vel = forward_state(pos, vel, cd, g, dt)
+        # We know that the correct muzzle position (p0) will
+        # give an exact fit, so we return early to reduce wasted
+        # simulation. This is also good for worst case (no fit ever).
+        if pos.sub(p).length() > threshold:
+            return False
 
-    cd_t = cd**t
-    S = (1 - cd_t) / (1 - cd)
-    # Velocity
-    v0 = vt.copy()
-    v0.y += g * S
-    v0 = v0.div(cd_t)
-    # Position
-    av = v0.mul(S)
-    av.y += (g / (1 - cd)) * (S - t)
-    p0 = pt.sub(av)
+        prev_t = t
 
-    return p0, v0
+    return True
+
+
+def velocity_to_angles(vel: Vector) -> tuple[float, float]:
+    horiz = math.hypot(vel.x, vel.z) + EPSILON
+    pitch = math.degrees(math.atan2(vel.y, horiz))
+    yaw = -math.degrees(math.atan2(vel.x, vel.z))
+    yaw = (yaw + 360) % 360  # -180, 180 => 0, 360
+    return yaw, pitch
+
+
+def estimate_muzzle(
+    observations: list[tuple[float, Vector]],
+    min_v: int = None,
+    max_v: int = None,
+    vms_multiple: int = None,
+    cd: float = None,
+    g: float = None,
+    max_t: int = 750,
+):
+    # 2 datapoints is enough only if drag and gravity are already known.
+    if len(observations) < 2:
+        return
+
+    # b/s -> b/t
+    min_v: float = min_v / 20 if min_v is not None else 0
+    max_v: float = max_v / 20 if max_v is not None else 10**9  # Treat as infinite.
+    v_multiple: float = vms_multiple / 20 if vms_multiple is not None else None
+
+    # Normalise the timestamps by making everything relative to first observation.
+    t0 = observations[0][0]
+    nsd_obs = [(sec2tick(t - t0), p) for t, p in observations]
+
+    velocities = calculate_velocities(nsd_obs)
+    # If cd or g are unknown, we use a fallback system to infer the values.
+    # Note: the fallback can fail.
+    cd = cd if cd is not None else estimate_cd(velocities, g)
+    g = g if g is not None else estimate_g(velocities, cd)
+    if cd is None or g is None:
+        return None
+
+    acceptable_threshold = 0.0001  # Honestly idk what this should be.
+    pos = nsd_obs[0][1]
+    vel = avg_to_inst_velocity(velocities[0][0], velocities[0][1], cd, g)
+    for t in range(0, -max_t - 1, -1):
+        if t < 0:
+            pos, vel = step_backward(pos, vel, cd, g)
+
+        v_len = vel.length()
+        v_len_rounded = round_increment(v_len, 0.05)
+
+        # Only bother evaluating if the velocity is plausible.
+        if v_len_rounded > max_v:
+            break  # Will only grow as t increases. Give up.
+        if v_len_rounded < min_v:
+            continue
+        if v_multiple and v_len_rounded % v_multiple != 0:
+            continue
+
+        # NOTE: Rounding the velocity **MUST** be done, otherwise you'll get garbage.
+        # We scale it so the velocity magnitude will be a whole number in m/s.
+        vel_rounded = vel.mul(v_len / v_len_rounded)
+        if evaluate(nsd_obs, pos, vel_rounded, cd, g, t, acceptable_threshold):
+            yaw, pitch = velocity_to_angles(vel_rounded)
+            vms = v_len_rounded * 20  # b/t -> b/s
+            t_obs0 = -t
+            return dict(cd=cd, g=g, pitch=pitch, pos=pos, t=t_obs0, v_ms=vms, yaw=yaw)
+    return

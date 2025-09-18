@@ -20,9 +20,9 @@ CALL :unknown & GOTO :end
     GOTO :EOF
 
 :build
-    echo "Not implemented yet"
+    echo "Not implemented yet."
     GOTO :EOF
 
 :clean
-    echo "Not implemented yet"
+    echo "Not implemented yet."
     GOTO :EOF
