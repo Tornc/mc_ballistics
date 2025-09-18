@@ -44,17 +44,17 @@ print("Solver-step hybrid.")
 print(f"{iterations - fails}/{iterations}")
 print(f"Time taken: {t2 - t1}")
 
-fails = 0
-t1 = time()
-for i in range(iterations):
-    stats = estimate_muzzle(obs)
-    if stats is None:
-        fails += 1
-        continue
-    if stats.get("pos").sub(apos).length() > 0.001:
-        fails += 1
+# fails = 0
+# t1 = time()
+# for i in range(iterations):
+#     stats = estimate_muzzle(obs)
+#     if stats is None:
+#         fails += 1
+#         continue
+#     if stats.get("pos").sub(apos).length() > 0.001:
+#         fails += 1
 
-t2 = time()
-print("Full simulation")
-print(f"{iterations - fails}/{iterations}")
-print(f"Time taken: {t2 - t1}")
+# t2 = time()
+# print("Full simulation")
+# print(f"{iterations - fails}/{iterations}")
+# print(f"Time taken: {t2 - t1}")

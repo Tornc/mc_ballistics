@@ -559,22 +559,6 @@ def calculate_velocities2(
     return velocities
 
 
-def calculate_error(
-    sim_traj: list[tuple[int, Vector]],
-    observations: list[tuple[int, Vector]],
-    t: int,
-) -> float:
-    # We can get away with using something simple like this
-    # because we're only looking for the exact fit. And also
-    # length is guaranteed to be positive.
-    total_error = 0
-    for i in range(len(observations)):
-        sim_idx = t + observations[i][0]
-        dpos = sim_traj[sim_idx][1].sub(observations[i][1])
-        total_error += dpos.length()
-    return total_error
-
-
 def estimate_muzzle2(
     observations: list[tuple[float, Vector]],
     min_v: int = None,
@@ -608,29 +592,26 @@ def estimate_muzzle2(
     acceptable_threshold = 0.001
     pos = nsd_obs[0][1]
     vel = avg_to_inst_velocity(velocities[0][0], velocities[0][1], cd, g)
-    for t in range(0, max_t):
-        if t > 0:
+    for t in range(0, -max_t - 1, -1):
+        if t < 0:
             pos, vel = step_backward(pos, vel, cd, g)
 
         v_len = vel.length()
-        v_lenr = round_increment(v_len, 0.05)
+        v_len_rounded = round_increment(v_len, 0.05)
 
-        if v_lenr > max_v:
+        if v_len_rounded > max_v:
             break
-        if v_lenr < min_v:
+        if v_len_rounded < min_v:
             continue
-        if v_multiple and v_lenr % v_multiple != 0:
+        if v_multiple and v_len_rounded % v_multiple != 0:
             continue
 
-        nrvel = vel.mul(v_len / v_lenr)
-        # sim_traj = simulate_forward(pos, nrvel, cd, g, t + nsd_obs[-1][0])
-        # error = calculate_error(sim_traj, nsd_obs, t)
-        error = evaluate(nsd_obs, pos, nrvel, cd, g, t)
-        if error < acceptable_threshold:
-            yaw, pitch = velocity_to_angles(nrvel)
-            return dict(
-                cd=cd, g=g, pitch=pitch, pos=pos, t=t, v_ms=v_lenr * 20, yaw=yaw
-            )
+        vel_rounded = vel.mul(v_len / v_len_rounded)
+        # error = evaluate(nsd_obs, pos, vel_rounded, cd, g, t, acceptable_threshold)
+        if evaluate(nsd_obs, pos, vel_rounded, cd, g, t, acceptable_threshold):
+            yaw, pitch = velocity_to_angles(vel_rounded)
+            vms = v_len_rounded * 20  # b/t -> b/s
+            return dict(cd=cd, g=g, pitch=pitch, pos=pos, t=t, v_ms=vms, yaw=yaw)
     return
 
 
@@ -640,20 +621,25 @@ def evaluate(
     v0: Vector,
     cd: float,
     g: float,
-    t: int,
+    t0: int,
+    threshold: float,
 ):
-    total_error = 0
-    ct = -t
-    p, v = p0.copy(), v0.copy()
-    for tob, pob in obs:
-        dt = tob - ct
+    pos, vel = p0.copy(), v0.copy()
+    prev_t = t0
+    for t, p in obs:
+        dt = t - prev_t
         if dt > 1:
-            p, v = forward_state(p, v, cd, g, dt)
+            pos, vel = forward_state(pos, vel, cd, g, dt)
         else:
-            p, v = step_forward(p,v, cd, g)
-        total_error += p.sub(pob).length()
-        ct += dt
-    return total_error
+            pos, vel = step_forward(pos, vel, cd, g)
+
+        if pos.sub(p).length() > threshold:
+            return False
+
+        prev_t = t
+
+    # Very simple error checking, because we're looking for an exact match.
+    return True
 
 
 def step_forward(pos: Vector, vel: Vector, cd: float, g: float):
@@ -664,30 +650,11 @@ def step_forward(pos: Vector, vel: Vector, cd: float, g: float):
     v.y -= g
     return p, v
 
-def simulate_forward2(p: Vector, v: Vector, cd: float, g: float, t: int):
-    pos = p.copy()
-    vel = v.copy()
-    for t in range(t + 1):
-        pos = pos.add(vel)
-        vel = vel.mul(cd)
-        vel.y -= g
-    return pos, vel
-
-def simulate_forward(p: Vector, v: Vector, cd: float, g: float, t: int):
-    pos = p.copy()
-    vel = v.copy()
-    trajectory = []
-    for t in range(t + 1):
-        trajectory.append((t, pos.copy()))
-        pos = pos.add(vel)
-        vel = vel.mul(cd)
-        vel.y -= g
-    return trajectory
-
 
 def forward_state(
     p0: Vector, v0: Vector, cd: float, g: float, t: int
 ) -> tuple[Vector, Vector]:
+    # Closed form of simulate_trajectory()
     # No drag
     if abs(1 - cd) < EPSILON:
         vt = v0.copy()
@@ -706,31 +673,4 @@ def forward_state(
     av = v0.mul(S)
     av.y += (g / (1 - cd)) * (S - t)
     pt = p0.add(av)
-
     return pt, vt
-
-
-def inverse_state(
-    pt: Vector, vt: Vector, cd: float, g: float, t: int
-) -> tuple[Vector, Vector]:
-    # No drag
-    if abs(1 - cd) < EPSILON:
-        v0 = vt.copy()
-        v0.y += g * t
-        av = v0.mul(t)
-        av.y -= g * t * (t - 1) / 2
-        p0 = pt.sub(av)
-        return p0, v0
-
-    cd_t = cd**t
-    S = (1 - cd_t) / (1 - cd)
-    # Velocity
-    v0 = vt.copy()
-    v0.y += g * S
-    v0 = v0.div(cd_t)
-    # Position
-    av = v0.mul(S)
-    av.y += (g / (1 - cd)) * (S - t)
-    p0 = pt.sub(av)
-
-    return p0, v0
