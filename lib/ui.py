@@ -179,7 +179,7 @@ def sett_rev_cannon(disable: bool):
         # TODO: might want to adjust min max according to assumed_velocity_multiple
         st.slider(
             disabled=disable,
-            help=f"{DF_ASSUMED_VELOCITY_RANGE} for big cannons, speeds up estimator massively.",
+            help=f"{DF_ASSUMED_VELOCITY_RANGE} for big cannons.",
             key="assumed_velocity_range",
             label="Velocity range (m/s)",
             max_value=DF_MAX_ASSUMED_VELOCITY,
