@@ -25,6 +25,8 @@ obs = []
 while len(obs) <= 2:
     obs = get_observed_trajectory(simulate_trajectory(CANNON, round(t)), RADAR)
 
+print(f"{len(obs)} samples over {sec2tick(obs[-1][0]-obs[0][0])} ticks. {round((obs[-1][0]-obs[0][0]) / len(obs) * 100)}% filled.")
+
 iterations = 1000
 
 fails = 0

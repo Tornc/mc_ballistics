@@ -77,7 +77,6 @@ If you're interested in CBC ballistics, I highly recommend taking a look at thei
 
 ## TODO
 
-- [ ] Closed form solver instead of brute force simulation!!!!!
 - [ ] It'd be nice to explain how the muzzle locator function works conceptually with illustrations.
 - [ ] Link the specific Discord message.
 - [ ] Create a proper binary without: 1) Pyodide / package load times. 2) fugly Electron bar
