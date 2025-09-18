@@ -372,12 +372,13 @@ def avg_to_inst_velocity(dt: int, vel: Vector, cd: float, g: float) -> Vector:
         return result
 
 
-def reverse_step(pos: Vector, vel: Vector, cd: float, g: float):
+def step_backward(pos: Vector, vel: Vector, cd: float, g: float):
     # A single step of simulate trajectory, but in reverse.
-    vel.y += g
-    vel = vel.div(cd)
-    pos = pos.sub(vel)
-    return pos, vel
+    p, v = pos.copy(), vel.copy()
+    v.y += g
+    v = v.div(cd)
+    p = p.sub(v)
+    return p, v
 
 
 def compute_rmse(
@@ -453,7 +454,7 @@ def estimate_muzzle(
                 return dict(cd=cd, g=g, pitch=pitch, pos=pos, t=t, v_ms=vms, yaw=yaw)
 
         # Continue simulating backward.
-        pos, vel = reverse_step(pos, vel, cd, g)
+        pos, vel = step_backward(pos, vel, cd, g)
     return
 
 
@@ -564,7 +565,8 @@ def calculate_error(
     t: int,
 ) -> float:
     # We can get away with using something simple like this
-    # because we're only looking for the exact fit.
+    # because we're only looking for the exact fit. And also
+    # length is guaranteed to be positive.
     total_error = 0
     for i in range(len(observations)):
         sim_idx = t + observations[i][0]
@@ -603,34 +605,73 @@ def estimate_muzzle2(
     if cd is None or g is None:
         return None
 
-    earliest_vel = avg_to_inst_velocity(velocities[0][0], velocities[0][1], cd, g)
-
     acceptable_threshold = 0.001
-    pos, vel = nsd_obs[0][1], earliest_vel
-    es = []
+    pos = nsd_obs[0][1]
+    vel = avg_to_inst_velocity(velocities[0][0], velocities[0][1], cd, g)
     for t in range(0, max_t):
+        if t > 0:
+            pos, vel = step_backward(pos, vel, cd, g)
+
         v_len = vel.length()
-        v_lenr = round_increment(v_len, 0.05)  # TODO: why is this so fucked up?
-        # Only simulate forward if velocity is plausible.
+        v_lenr = round_increment(v_len, 0.05)
+
         if v_lenr > max_v:
-            break  # Will only grow in value as t increases. Give up.
+            break
+        if v_lenr < min_v:
+            continue
+        if v_multiple and v_lenr % v_multiple != 0:
+            continue
 
-        if min_v <= v_lenr and (v_multiple is None or v_lenr % v_multiple == 0):
-            # Really fucking important! (length of vel * 20 must be a whole number)
-            nrvel = vel.mul(v_len / v_lenr)
-            sim_traj = simulate_forward(pos, nrvel, cd, g, t + nsd_obs[-1][0])
-            # TODO: incorporate forward_state
-            error = calculate_error(sim_traj, nsd_obs, t)
-            if error < acceptable_threshold:
-                yaw, pitch = velocity_to_angles(nrvel)
-                return dict(
-                    cd=cd, g=g, pitch=pitch, pos=pos, t=t, v_ms=v_lenr * 20, yaw=yaw
-                )
+        nrvel = vel.mul(v_len / v_lenr)
+        # sim_traj = simulate_forward(pos, nrvel, cd, g, t + nsd_obs[-1][0])
+        # error = calculate_error(sim_traj, nsd_obs, t)
+        error = evaluate(nsd_obs, pos, nrvel, cd, g, t)
+        if error < acceptable_threshold:
+            yaw, pitch = velocity_to_angles(nrvel)
+            return dict(
+                cd=cd, g=g, pitch=pitch, pos=pos, t=t, v_ms=v_lenr * 20, yaw=yaw
+            )
+    return
 
-        # Continue simulating backward.
-        pos, vel = reverse_step(pos, vel, cd, g)
-    return es
 
+def evaluate(
+    obs: list[tuple[int, Vector]],
+    p0: Vector,
+    v0: Vector,
+    cd: float,
+    g: float,
+    t: int,
+):
+    total_error = 0
+    ct = -t
+    p, v = p0.copy(), v0.copy()
+    for tob, pob in obs:
+        dt = tob - ct
+        if dt > 1:
+            p, v = forward_state(p, v, cd, g, dt)
+        else:
+            p, v = step_forward(p,v, cd, g)
+        total_error += p.sub(pob).length()
+        ct += dt
+    return total_error
+
+
+def step_forward(pos: Vector, vel: Vector, cd: float, g: float):
+    # A single step of simulate_trajectory()
+    p, v = pos.copy(), vel.copy()
+    p = p.add(v)
+    v = v.mul(cd)
+    v.y -= g
+    return p, v
+
+def simulate_forward2(p: Vector, v: Vector, cd: float, g: float, t: int):
+    pos = p.copy()
+    vel = v.copy()
+    for t in range(t + 1):
+        pos = pos.add(vel)
+        vel = vel.mul(cd)
+        vel.y -= g
+    return pos, vel
 
 def simulate_forward(p: Vector, v: Vector, cd: float, g: float, t: int):
     pos = p.copy()
