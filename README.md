@@ -32,9 +32,8 @@ Check it out at: https://tornc.github.io/mc_ballistics/.
 ## Muzzle estimator
 
 > [!TIP]
-> Inputting drag and gravity values will guarantee 100% success rate, and allows you to only need 2 observations.
-> <br>
-> Set the minimum, maximum velocity bounds and velocity multiple. It will reduce computation cost by a bunch.
+> 1. Inputting drag and gravity values will guarantee 100% success rate, and allows you to only need 2 observations.
+> 2. Set the minimum, maximum velocity bounds and velocity multiple. It will reduce computation cost by a bunch.
 
 ![pic3](./docs/reliability.png)
 
