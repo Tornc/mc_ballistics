@@ -29,10 +29,11 @@ Check it out at: https://tornc.github.io/mc_ballistics/.
     </em>
 </p>
 
-## Muzzle estimator tips
+## Muzzle estimator
 
-1. Giving the drag and gravity values will guarantee 100% success rate, and allows you to only need 2 observations.
-2. Set the minimum, maximum velocity bounds and velocity multiple. It will reduce computation cost.
+> [!TIP]
+> - Inputting drag and gravity values will guarantee 100% success rate, and allows you to only need 2 observations.
+> - Set the minimum, maximum velocity bounds and velocity multiple. It will reduce computation cost by a bunch.
 
 ![pic3](./docs/reliability.png)
 
@@ -42,14 +43,12 @@ Check it out at: https://tornc.github.io/mc_ballistics/.
     </em>
 </p>
 
-## How the muzzle estimator works
-
-Through the drag coefficient (C<sub>d</sub>) and gravity (G), we know the shape of the trajectory (arc). Then, all we need to know is *how far along* the arc the muzzle is located. We accomplish this by simulating the projectile in reverse step by step (bruteforce), starting from our first observation. To know when to stop, we simulate an arc[^1] of the same shape forwards at every step[^2] and see if this arc lines up exactly with our observations.
-
-[^1]: Not the entire arc, parts that correspond to an observation.
-[^2]: Only if velocity is plausible.
+Through the drag coefficient (C<sub>d</sub>) and gravity (G), we know the shape of the trajectory (arc). Then, all we need to know is _how far along_ the arc the muzzle is located. We accomplish this by simulating the projectile in reverse step by step (bruteforce), starting from our first observation. To know when to stop, we simulate an arc of the same shape forwards at every step and see if this arc lines up exactly with our observations.
 
 ![anim](./docs/shitty_animation.gif)
+
+> [!NOTE]
+> We don't forward simulate the entire arc, only parts that correspond to an observation - and only if the velocity is plausible.
 
 ## Why?
 
