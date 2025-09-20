@@ -103,12 +103,11 @@ generate_statistics()
 
 if ssg("perform_estimation") and ssg("statistics").get("est_muzzle_pos") is None:
     st.toast("Muzzle estimation failed!")
+if ssg("statistics").get("trajectory") is None:
+    st.toast("Cannon was unable to fire!")
 
 tab1, tab2 = st.tabs(["Plot", "Results"])
 with tab1:
     plot(generate_figure())
 with tab2:
     results()
-
-
-# TODO: implement vms_multiple input, call it the smallest velocity unit or sth.

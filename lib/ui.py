@@ -169,7 +169,7 @@ def sett_rev_cannon(disable: bool):
             disabled=disable,
             help=f"{DF_ASSUMED_VELOCITY_MULTIPLE} for big cannons.",
             key="assumed_velocity_multiple",
-            label="Smallest velocity multiple (m/s)",
+            label="Velocity multiple (m/s)",
             max_value=DF_MAX_ASSUMED_VELOCITY,
             min_value=1,
             placeholder=f"{DF_ASSUMED_VELOCITY_MULTIPLE}",
