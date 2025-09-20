@@ -46,7 +46,14 @@ Check it out at: https://tornc.github.io/mc_ballistics/.
 
 Through the drag coefficient (C<sub>d</sub>) and gravity (G), we know the shape of the trajectory (arc). Then, all we need to know is _how far along_ the arc the muzzle is located. We accomplish this by simulating the projectile in reverse step by step (bruteforce), starting from our first observation. To know when to stop, we simulate an arc of the same shape forwards at every step and see if this arc lines up exactly with our observations.
 
-![anim](./docs/shitty_animation.gif)
+![anim1](./docs/shitty_animation.gif)
+
+<p align="center">
+    <em>
+        Visualisation on how it works, drawn by yours truly. Sorry, I'm not an artist 💀.
+    </em>
+</p>
+
 
 > [!NOTE]
 > We don't forward simulate the entire arc, only parts that correspond to an observation - and only if the velocity is plausible.
