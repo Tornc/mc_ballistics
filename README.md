@@ -65,7 +65,7 @@ I guess I got sidetracked 😅.
 
 Anyways, the initial goal was to make a proof of concept that demonstrated the possibility of automated counter-battery systems. This is done through a Some Peripherals' Radar or anything equivalent. The key requirement is that the peripheral has to **detect entities and record their positions**.
 
-## Installation
+## Installation (if you want to build locally)
 
 1. Download the repository.
 
