@@ -29,6 +29,28 @@ Check it out at: https://tornc.github.io/mc_ballistics/.
     </em>
 </p>
 
+## Muzzle estimator tips
+
+1. Giving the drag and gravity values will guarantee 100% success rate, and allows you to only need 2 observations.
+2. Set the minimum, maximum velocity bounds and velocity multiple. It will reduce computation cost.
+
+![pic3](./docs/reliability.png)
+
+<p align="center">
+    <em>
+        With the radar having a 20% drop rate, but I rerolled the observations if there were less than 3. As you can see, providing drag and gravity values is important. You can compensate for that with a low interval, but it's still not 100% guaranteed. (&lt0.025% fail chance). Low trajectories are harder because there's less information to be gotten, especially if your samples are at the top of the trajectory.
+    </em>
+</p>
+
+## How the muzzle estimator works
+
+Through the drag coefficient (C<sub>d</sub>) and gravity (G), we know the shape of the trajectory (arc). Then, all we need to know is *how far along* the arc the muzzle is located. We accomplish this by simulating the projectile in reverse step by step (bruteforce), starting from our first observation. To know when to stop, we simulate an arc[^1] of the same shape forwards at every step[^2] and see if this arc lines up exactly with our observations.
+
+[^1]: Not the entire arc, parts that correspond to an observation.
+[^2]: Only if velocity is plausible.
+
+![anim](./docs/shitty_animation.gif)
+
 ## Why?
 
 > Plotly figures are pretty and WebApps are cool.
@@ -36,10 +58,6 @@ Check it out at: https://tornc.github.io/mc_ballistics/.
 I guess I got sidetracked 😅.
 
 Anyways, the initial goal was to make a proof of concept that demonstrated the possibility of automated counter-battery systems. This is done through a Some Peripherals' Radar or anything equivalent. The key requirement is that the peripheral has to **detect entities and record their positions**.
-
-## How the estimator works
-
-For now, it's left as an exercise to the reader. 💀
 
 ## Installation
 
@@ -77,7 +95,6 @@ If you're interested in CBC ballistics, I highly recommend taking a look at thei
 
 ## TODO
 
-- [ ] Commenting in simulation.py
-- [ ] It'd be nice to explain how the muzzle locator function works conceptually with illustrations.
-- [ ] Link the specific Discord message.
+- [ ] Commenting in simulation.py for estimating cd and g
+- [ ] Link the specific Discord message from @sashafiesta.
 - [ ] Create a proper binary without: 1) Pyodide / package load times. 2) fugly Electron bar

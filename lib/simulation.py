@@ -49,10 +49,9 @@ def perform_simulation(
         trajectory = simulate_trajectory(cannon, stop_y=target_pos.y)
         results.update(dict(yaw=cannon.yaw, pitch=cannon.pitch))
     else:
-        yaw, pitch, t = calculate_yaw_pitch_t(
-            cannon, target_pos, trajectory_type == "low"
-        )
-        if yaw is not None and pitch is not None and t is not None:
+        rs = calculate_yaw_pitch_t(cannon, target_pos, trajectory_type == "low")
+        if rs is not None:
+            yaw, pitch, t = rs
             if pitch >= cannon.min_pitch and pitch <= cannon.max_pitch:
                 cannon.yaw, cannon.pitch, max_ticks = yaw, pitch, round(t)
                 trajectory = simulate_trajectory(cannon, max_ticks=max_ticks)
@@ -88,8 +87,8 @@ def perform_simulation(
     minvms, maxvms = (None, None) if assumed_v_ms_range is None else assumed_v_ms_range
     stats = estimate_muzzle(
         observations=observed_trajectory,
-        min_v=minvms,
-        max_v=maxvms,
+        min_vms=minvms,
+        max_vms=maxvms,
         vms_multiple=assumed_v_ms_multiple,
         cd=assumed_cd,
         g=assumed_g,
@@ -214,11 +213,26 @@ def solve_pitch(
     return t, math.degrees(a_R1)
 
 
-def calculate_yaw_pitch_t(cannon: Cannon, target_pos: Vector, low: bool):
+def calculate_yaw_pitch_t(
+    cannon: Cannon, target_pos: Vector, low: bool
+) -> tuple[float, float, float] | None:
+    """
+    Calculates the angles and flight time for either the low or high
+    pitch solution given a target coordinate.
+
+    Args:
+        cannon (Cannon):
+        target_pos (Vector):
+        low (bool):
+
+    Returns:
+        tuple[float, float, float] | None:
+    """
     dpos = target_pos.sub(cannon.pos)
     # The target is literally inside the barrel
     if dpos.length() <= cannon.length:
-        return None, None, None
+        return
+
     horizontal_dist = math.sqrt(dpos.x**2 + dpos.z**2)
     t, pitch = solve_pitch(
         distance=horizontal_dist,
@@ -231,8 +245,9 @@ def calculate_yaw_pitch_t(cannon: Cannon, target_pos: Vector, low: bool):
     )
 
     if t is None:
-        return None, None, None
+        return
 
+    # Following CBC convention.
     yaw = -math.degrees(math.atan2(dpos.x, dpos.z))
     yaw = (yaw + 360) % 360  # -180, 180 => 0, 360
     return yaw, pitch, t
@@ -242,9 +257,19 @@ def simulate_trajectory(
     cannon: Cannon, max_ticks: int = None, stop_y: float = None
 ) -> list[tuple[int, Vector]]:
     """
-    According to @sashafiesta#1978's formula on Discord:
-    Vx = 0.99 * Vx
-    Vy = 0.99 * Vy - 0.05
+    `max_ticks` and/or `stop_y` must be provided.
+
+    According to @sashafiesta#1978's formulas on Discord:
+    - Vx = 0.99 * Vx
+    - Vy = 0.99 * Vy - 0.05
+
+    Args:
+        cannon (Cannon):
+        max_ticks (int, optional): Defaults to None.
+        stop_y (float, optional): Defaults to None.
+
+    Returns:
+        list[tuple[int, Vector]]: Projectile trajectory; timestamps + positions.
     """
     assert (max_ticks != None) or (stop_y != None), "At least one of these must be set."
 
@@ -264,8 +289,7 @@ def simulate_trajectory(
     )
     # Muzzle (initial projectile) position
     pos = cannon.pos.add(dir.mul(cannon.length))
-    # v/s -> v/t
-    vel = dir.mul(cannon.v_ms / 20)
+    vel = dir.mul(cannon.v_ms / 20)  # v/s -> v/t
 
     trajectory: list[tuple[int, Vector]] = []
 
@@ -288,10 +312,16 @@ def get_observed_trajectory(
     trajectory: list[tuple[int, Vector]], radar: Radar
 ) -> list[tuple[float, Vector]]:
     """
+    A semi-realistic depiction of how what an MC radar would have to deal with.
+    1. First observation happens at an arbitrary time.
+    2. Timestamps are in seconds.
+    3. Radar range is a thing.
+    4. Radar scan rate may be slow for balancing reasons.
+    5. Lag exists and/or a scan is computationally expensive.
+
     Args:
         trajectory (list[tuple[int, Vector]]): timestamp in **ticks**, position
         radar (Radar):
-        drop_rate (float, optional): Portion of measurements that get skipped range: [0, 1]. Defaults to 0.
 
     Returns:
         list[tuple[float, Vector]]: timestamp in **seconds**, position
@@ -314,7 +344,11 @@ def get_observed_trajectory(
 
 def calculate_velocities(obs: list[tuple[int, Vector]]) -> list[tuple[int, Vector]]:
     """
-    Note that this will return list of len(observations) - 1.
+    Args:
+        obs (list[tuple[int, Vector]]): observations with normalised timestamps.
+
+    Returns:
+        list[tuple[int, Vector]]: (dt, velocity XYZ)
     """
     velocities = []
     for i in range(len(obs) - 1):
@@ -336,12 +370,7 @@ def estimate_cd(velocities: list[int, Vector], g: float = None) -> float | None:
         if abs(v0c) > EPSILON and v1c * v0c > EPSILON:
             return (v1c / v0c) ** (1 / dt)
 
-    def solve_cdy(
-        v0y: float,
-        v1y: float,
-        dt: int,
-        g: float,
-    ) -> float | None:
+    def solve_cdy(v0y: float, v1y: float, dt: int, g: float) -> float | None:
         # No information to be gained, don't bother.
         if dt <= 0 or (abs(v0y) < EPSILON and abs(v1y) < EPSILON):
             return
@@ -453,7 +482,9 @@ def avg_to_inst_velocity(dt: int, vel: Vector, cd: float, g: float) -> Vector:
 
 
 def step_backward(pos: Vector, vel: Vector, cd: float, g: float):
-    # A single step of simulate trajectory, but in reverse.
+    """
+    A single step of simulate trajectory, but in reverse.
+    """
     p, v = pos.copy(), vel.copy()
     v.y += g
     v = v.div(cd)
@@ -462,10 +493,11 @@ def step_backward(pos: Vector, vel: Vector, cd: float, g: float):
 
 
 def step_forward(pos: Vector, vel: Vector, cd: float, g: float):
-    # A single step of simulate_trajectory()
-    p, v = pos.copy(), vel.copy()
-    p = p.add(v)
-    v = v.mul(cd)
+    """
+    A single step of simulate_trajectory()
+    """
+    p = pos.add(vel)
+    v = vel.mul(cd)
     v.y -= g
     return p, v
 
@@ -473,7 +505,19 @@ def step_forward(pos: Vector, vel: Vector, cd: float, g: float):
 def forward_state(
     p0: Vector, v0: Vector, cd: float, g: float, t: int
 ) -> tuple[Vector, Vector]:
-    # Closed form of simulate_trajectory()
+    """
+    Closed form of simulate_trajectory()
+
+    Args:
+        p0 (Vector): 
+        v0 (Vector):
+        cd (float):
+        g (float):
+        t (int): how many ticks to jump forward.
+
+    Returns:
+        tuple[Vector, Vector]: pN, vN
+    """
     # No drag
     if abs(1 - cd) < EPSILON:
         vt = v0.copy()
@@ -502,13 +546,28 @@ def evaluate(
     cd: float,
     g: float,
     t0: int,
-    threshold: float,
+    threshold: float = 1e-3,  # Honestly idk what this should be.
 ) -> bool:
+    """
+    Args:
+        obs (list[tuple[int, Vector]]): Our real-world samples that we need to check with.
+        p0 (Vector): Proposed muzzle position.
+        v0 (Vector): Proposed muzzle velocity.
+        cd (float):
+        g (float):
+        t0 (int): Proposed time of firing the cannon; how far in the past it is. (<= 0)
+        threshold (float, optional): Max distance any simulated position can be from an observed one. Defaults to 1e-3.
+
+    Returns:
+        bool: Whether we accept or reject pos and vel.
+    """
     pos, vel = p0.copy(), v0.copy()
     prev_t = t0
     for t, p in obs:
         dt = t - prev_t
+        prev_t = t
         if dt == 1:
+            # Individually, cheaper than solving.
             pos, vel = step_forward(pos, vel, cd, g)
         else:
             pos, vel = forward_state(pos, vel, cd, g, dt)
@@ -518,12 +577,18 @@ def evaluate(
         if pos.sub(p).length() > threshold:
             return False
 
-        prev_t = t
-
     return True
 
 
 def velocity_to_angles(vel: Vector) -> tuple[float, float]:
+    """
+    Calculates the direction of motion based on the velocity vector.
+    Args:
+        vel (Vector):
+
+    Returns:
+        tuple[float, float]: yaw, pitch
+    """
     horiz = math.hypot(vel.x, vel.z) + EPSILON
     pitch = math.degrees(math.atan2(vel.y, horiz))
     yaw = -math.degrees(math.atan2(vel.x, vel.z))
@@ -533,58 +598,81 @@ def velocity_to_angles(vel: Vector) -> tuple[float, float]:
 
 def estimate_muzzle(
     observations: list[tuple[float, Vector]],
-    min_v: int = None,
-    max_v: int = None,
+    min_vms: int = None,
+    max_vms: int = None,
     vms_multiple: int = None,
     cd: float = None,
     g: float = None,
     max_t: int = 750,
-):
-    # 2 datapoints is enough only if drag and gravity are already known.
+) -> dict | None:
+    """
+    Notes: 
+        Be careful with your assumptions, conservative estimates are better than getting nothing at all.
+
+    Args:
+        observations (list[tuple[float, Vector]]): Samples with format: (seconds, Vector(X, Y, Z)).
+        min_vms (int, optional): Rule out everything below. Defaults to None.
+        max_vms (int, optional): Rule out everything above. Defaults to None.
+        vms_multiple (int, optional): Rule out everything that's not a multiple (m/s). Defaults to None.
+        cd (float, optional): drag coefficient (0-1). Defaults to None.
+        g (float, optional): gravity (0-1). Defaults to None.
+        max_t (int, optional): How many ticks we can look back in time. Defaults to 750.
+
+    Returns:
+        dict | None: Will return nothing if no candidate is fit.
+    """
+    # 2 is enough only if drag and gravity are already known.
     if len(observations) < 2:
         return
 
-    # b/s -> b/t
-    min_v: float = min_v / 20 if min_v is not None else 0
-    max_v: float = max_v / 20 if max_v is not None else 10**9  # Treat as infinite.
+    # m/s -> m/t
+    min_v: float = min_vms / 20 if min_vms is not None else 0
+    max_v: float = max_vms / 20 if max_vms is not None else 10**9  # Treat as infinite.
     v_multiple: float = vms_multiple / 20 if vms_multiple is not None else None
 
-    # Normalise the timestamps by making everything relative to first observation.
+    # Normalise the timestamps by making them relative to the first observation.
     t0 = observations[0][0]
-    nsd_obs = [(sec2tick(t - t0), p) for t, p in observations]
+    obs = [(sec2tick(t - t0), p) for t, p in observations]
+    vel_obs = calculate_velocities(obs)
 
-    velocities = calculate_velocities(nsd_obs)
     # If cd or g are unknown, we use a fallback system to infer the values.
-    # Note: the fallback can fail.
-    cd = cd if cd is not None else estimate_cd(velocities, g)
-    g = g if g is not None else estimate_g(velocities, cd)
+    # This requires 3 observations instead of 2.
+    # NOTE: fallback is more likely to fail with flatter trajectories.
+    cd = cd if cd is not None else estimate_cd(vel_obs, g)
+    g = g if g is not None else estimate_g(vel_obs, cd)
     if cd is None or g is None:
-        return None
+        return
 
-    acceptable_threshold = 0.0001  # Honestly idk what this should be.
-    pos = nsd_obs[0][1]
-    vel = avg_to_inst_velocity(velocities[0][0], velocities[0][1], cd, g)
+    # pos, vel here are the proposed muzzle position and velocity we need to verify.
+    pos = obs[0][1]
+    vel = avg_to_inst_velocity(vel_obs[0][0], vel_obs[0][1], cd, g)
     for t in range(0, -max_t - 1, -1):
+        # Only step back on the 2nd iteration. GOTO would've been nicer. (Lua-pilled)
         if t < 0:
             pos, vel = step_backward(pos, vel, cd, g)
 
-        v_len = vel.length()
-        v_len_rounded = round_increment(v_len, 0.05)
+        # See reasoning below guard clauses.
+        v_mag = vel.length()
+        v_mag_rounded = round_increment(v_mag, 0.05)
 
         # Only bother evaluating if the velocity is plausible.
-        if v_len_rounded > max_v:
-            break  # Will only grow as t increases. Give up.
-        if v_len_rounded < min_v:
-            continue
-        if v_multiple and v_len_rounded % v_multiple != 0:
+        # NOTE: Velocity will only increase the further back in time we go.
+        if v_mag_rounded > max_v:
+            break  # Only gets worse. Give up.
+        if v_mag_rounded < min_v:
+            continue  # We may end up in bounds later, so continue.
+        if v_multiple and v_mag_rounded % v_multiple != 0:
             continue
 
-        # NOTE: Rounding the velocity **MUST** be done, otherwise you'll get garbage.
         # We scale it so the velocity magnitude will be a whole number in m/s.
-        vel_rounded = vel.mul(v_len / v_len_rounded)
-        if evaluate(nsd_obs, pos, vel_rounded, cd, g, t, acceptable_threshold):
+        # NOTE: Rounding the velocity **MUST** be done, otherwise you'll get garbage.
+        vel_rounded = vel.mul(v_mag / v_mag_rounded)
+        if evaluate(obs, pos, vel_rounded, cd, g, t):
+            # Include some extra information that may come in handy besides the muzzle position.
             yaw, pitch = velocity_to_angles(vel_rounded)
-            vms = v_len_rounded * 20  # b/t -> b/s
+            # How many ticks in the past (relative to first observation) the cannon has fired.
             t_obs0 = -t
+            vms = int(v_mag_rounded * 20)  # m/t -> m/s
             return dict(cd=cd, g=g, pitch=pitch, pos=pos, t=t_obs0, v_ms=vms, yaw=yaw)
+
     return
