@@ -261,7 +261,7 @@ def sett_credits():
         "[![GitHub](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/Tornc/mc_ballistics)"
     )
     cl[2].markdown(
-        "[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)"
+        "[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Tornc/mc_ballistics/blob/main/LICENSE)"
     )
 
 
