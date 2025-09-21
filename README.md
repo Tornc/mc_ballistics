@@ -70,19 +70,19 @@ Anyways, the initial goal was to make a proof of concept that demonstrated the p
 1. Download the repository.
 
 ```bash
-$ git clone https://github.com/Tornc/mc_ballistics.git
+git clone https://github.com/Tornc/mc_ballistics.git
 ```
 
 2. Install the requirements.
 
 ```bash
-$ pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 3. Run the app.
 
 ```bash
-$ streamlit run app.py
+streamlit run app.py
 ```
 
 Or run `script.cmd` (it does the exact same thing as `streamlit run app.py`).
