@@ -108,7 +108,6 @@ If you're interested in CBC ballistics, I highly recommend taking a look at thei
 ## TODO
 
 - [ ] Link the specific Discord message from @sashafiesta.
-- [ ] Update pictures
 - [ ] Commenting in simulation.py for estimating cd and g.
 - [ ] Make target lead function not inefficient as fuck.
 - [ ] Create a proper binary without: 1) Pyodide / package load times. 2) fugly Electron bar.
