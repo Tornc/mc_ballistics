@@ -37,7 +37,7 @@ def sett_clc_target():
             min_value=-DF_MAX_ENVIRONMENT_SIZE,
         )
 
-        st.text("Velocity (m/s)", help=f"Please don't set it to +/-{DF_MAX_ENVIRONMENT_SIZE}.")
+        st.text("Velocity (m/s)", help=f"Does nothing when firing manually.")
         col = st.columns(3)
         center_text(col, ["X", "Y", "Z"])
         col[0].number_input(
