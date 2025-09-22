@@ -48,7 +48,7 @@ def sett_clc_target():
             label="",
             max_value=float(DF_MAX_ENVIRONMENT_SIZE),
             min_value=float(-DF_MAX_ENVIRONMENT_SIZE),
-            placeholder=f"{DF_TARGET_VEL_MS_X}"
+            placeholder=f"{DF_TARGET_VEL_MS_X}",
         )
         col[1].number_input(
             disabled=ssg("manual_fire"),
@@ -58,7 +58,7 @@ def sett_clc_target():
             label="",
             max_value=float(DF_MAX_ENVIRONMENT_SIZE),
             min_value=float(-DF_MAX_ENVIRONMENT_SIZE),
-            placeholder=f"{DF_TARGET_VEL_MS_Y}"
+            placeholder=f"{DF_TARGET_VEL_MS_Y}",
         )
         col[2].number_input(
             disabled=ssg("manual_fire"),
@@ -70,7 +70,7 @@ def sett_clc_target():
             min_value=float(-DF_MAX_ENVIRONMENT_SIZE),
             placeholder=f"{DF_TARGET_VEL_MS_Z}",
         )
-        
+
 
 def sett_clc_cannon():
     st.text("Cannon")
@@ -263,7 +263,7 @@ def sett_rev_radar(disable: bool):
             help="Radar scan radius in blocks.",
             key="radar_range",
             label="Range",
-            # max_value should be min of absolute val of all area vals... a pain.
+            max_value=DF_MAX_ENVIRONMENT_SIZE * 2,
             min_value=1,
             placeholder=f"{DF_RADAR_RANGE}",
             step=1,
