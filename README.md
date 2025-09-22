@@ -101,6 +101,7 @@ If you're interested in CBC ballistics, I highly recommend taking a look at thei
 
 ## TODO
 
+- [ ] bugfix pitch solver
 - [ ] Target lead integration
 - [ ] Link the specific Discord message from @sashafiesta.
 - [ ] Commenting in simulation.py for estimating cd and g
