@@ -65,24 +65,24 @@ I guess I got sidetracked 😅.
 
 Anyways, the initial goal was to make a proof of concept that demonstrated the possibility of automated counter-battery systems. This is done through a Some Peripherals' Radar or anything equivalent. The key requirement is that the peripheral has to **detect entities and record their positions**.
 
-## Installation (if you want to build locally)
+## Build instructions
 
 1. Download the repository.
 
-```cmd
-$ git clone https://github.com/Tornc/mc_ballistics.git
+```bash
+git clone https://github.com/Tornc/mc_ballistics.git
 ```
 
 2. Install the requirements.
 
-```cmd
-$ pip install -r requirements.txt
+```bash
+pip install -r requirements.txt
 ```
 
 3. Run the app.
 
-```cmd
-$ streamlit run app.py
+```bash
+streamlit run app.py
 ```
 
 Or run `script.cmd` (it does the exact same thing as `streamlit run app.py`).
