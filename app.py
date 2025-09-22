@@ -51,9 +51,9 @@ def generate_statistics():
             ssg("target_pos_z"),
         ),
         Vector(
-            ssg("target_vel_x"),
-            ssg("target_vel_y"),
-            ssg("target_vel_z"),
+            ssg("target_vel_ms_x") / 20,
+            ssg("target_vel_ms_y") / 20,
+            ssg("target_vel_ms_z") / 20,
         ),
     )
     st.session_state["radar"] = Radar(
@@ -112,7 +112,10 @@ generate_statistics()
 if ssg("perform_estimation") and ssg("statistics").get("est_muzzle_pos") is None:
     st.toast("Muzzle estimation failed!")
 if ssg("statistics").get("trajectory") is None:
-    st.toast("Cannon was unable to fire!")
+    if ssg("statistics").get("pitch") is not None:
+        st.toast("Cannon was unable to fire!")
+    else:
+        st.toast("Cannon has no firing solution!")
 
 tab1, tab2 = st.tabs(["Plot", "Results"])
 with tab1:

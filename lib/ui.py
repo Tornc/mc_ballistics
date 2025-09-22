@@ -42,30 +42,30 @@ def sett_clc_target():
         center_text(col, ["X", "Y", "Z"])
         col[0].number_input(
             format="%0.1f",
-            key="target_vel_x",
+            key="target_vel_ms_x",
             label_visibility="collapsed",
             label="",
             max_value=float(DF_MAX_ENVIRONMENT_SIZE),
             min_value=float(-DF_MAX_ENVIRONMENT_SIZE),
-            placeholder=f"{DF_TARGET_VEL_X}"
+            placeholder=f"{DF_TARGET_VEL_MS_X}"
         )
         col[1].number_input(
             format="%0.1f",
-            key="target_vel_y",
+            key="target_vel_ms_y",
             label_visibility="collapsed",
             label="",
             max_value=float(DF_MAX_ENVIRONMENT_SIZE),
             min_value=float(-DF_MAX_ENVIRONMENT_SIZE),
-            placeholder=f"{DF_TARGET_VEL_Y}"
+            placeholder=f"{DF_TARGET_VEL_MS_Y}"
         )
         col[2].number_input(
             format="%0.1f",
-            key="target_vel_z",
+            key="target_vel_ms_z",
             label_visibility="collapsed",
             label="",
             max_value=float(DF_MAX_ENVIRONMENT_SIZE),
             min_value=float(-DF_MAX_ENVIRONMENT_SIZE),
-            placeholder=f"{DF_TARGET_VEL_Z}",
+            placeholder=f"{DF_TARGET_VEL_MS_Z}",
         )
         
 

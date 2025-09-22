@@ -73,11 +73,12 @@ def perform_simulation(
                 yaw, pitch, t = rs
                 path = simulate_target(target, round(t))
                 target.pos = path[-1][1]
+                results.update(target_path=path)
                 if pitch >= cannon.min_pitch and pitch <= cannon.max_pitch:
                     cannon.yaw, cannon.pitch, max_ticks = yaw, pitch, round(t)
                     trajectory = simulate_trajectory(cannon, max_ticks=max_ticks)
 
-                results.update(dict(yaw=yaw, pitch=pitch, target_path=path))
+                results.update(dict(yaw=yaw, pitch=pitch))
 
     if len(trajectory) == 0:
         return results

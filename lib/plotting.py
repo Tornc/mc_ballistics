@@ -109,7 +109,7 @@ def populate_plot(
 ):
     add_trace(fig, cannon.pos, "markers+text", "Cannon", 12)
     if target_path:
-        add_trace(fig, [p for _, p in target_path], "lines", "Target path", 8)
+        add_trace(fig, [p for _, p in target_path], "lines", "Target path", 8, "dash")
         add_trace(fig, target_pos, "markers+text", "Target", 12)
     elif target_pos:
         add_trace(fig, target_pos, "markers+text", "Target", 12)
