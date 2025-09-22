@@ -38,7 +38,7 @@ class Radar:
 
 def perform_simulation(
     cannon: Cannon,
-    target_pos: Vector,
+    target: Target,
     fire_at_target: bool = True,
     trajectory_type: str = "low",
     perform_estimation: bool = False,
@@ -52,17 +52,32 @@ def perform_simulation(
 
     trajectory = []
     if not fire_at_target:
-        trajectory = simulate_trajectory(cannon, stop_y=target_pos.y)
+        trajectory = simulate_trajectory(cannon, stop_y=target.pos.y)
         results.update(dict(yaw=cannon.yaw, pitch=cannon.pitch))
     else:
-        rs = calculate_solution(cannon, target_pos, trajectory_type == "low")
-        if rs is not None:
-            yaw, pitch, t = rs
-            if pitch >= cannon.min_pitch and pitch <= cannon.max_pitch:
-                cannon.yaw, cannon.pitch, max_ticks = yaw, pitch, round(t)
-                trajectory = simulate_trajectory(cannon, max_ticks=max_ticks)
+        # Hideous code btw.
+        if target.vel.length() == 0:
+            rs = calculate_solution(cannon, target.pos, trajectory_type == "low")
+            if rs is not None:
+                yaw, pitch, t = rs
+                if pitch >= cannon.min_pitch and pitch <= cannon.max_pitch:
+                    cannon.yaw, cannon.pitch, max_ticks = yaw, pitch, round(t)
+                    trajectory = simulate_trajectory(cannon, max_ticks=max_ticks)
 
-        results.update(dict(yaw=yaw, pitch=pitch))
+                results.update(dict(yaw=yaw, pitch=pitch))
+        else:
+            rs = calculate_solution_moving(
+                cannon, target.pos, target.vel, trajectory_type == "low"
+            )
+            if rs is not None:
+                yaw, pitch, t = rs
+                path = simulate_target(target, round(t))
+                target.pos = path[-1][1]
+                if pitch >= cannon.min_pitch and pitch <= cannon.max_pitch:
+                    cannon.yaw, cannon.pitch, max_ticks = yaw, pitch, round(t)
+                    trajectory = simulate_trajectory(cannon, max_ticks=max_ticks)
+
+                results.update(dict(yaw=yaw, pitch=pitch, target_path=path))
 
     if len(trajectory) == 0:
         return results
@@ -75,7 +90,7 @@ def perform_simulation(
             muzzle_pos=muzzle_pos,
             flight_time=tn,
             impact_pos=pos,
-            error_impact=pos.sub(target_pos).length(),
+            error_impact=pos.sub(target.pos).length(),
         )
     )
 
@@ -121,7 +136,7 @@ def perform_simulation(
 # === Simulation ===
 
 
-def simulate_target(target: Target, ticks: int):
+def simulate_target(target: Target, ticks: int) -> list[tuple[int, Vector]]:
     path = []
     pos = target.pos
     for t in range(ticks + 1):
@@ -301,8 +316,7 @@ def solve_pitch(
 
             # Good enough, let's call it quits
             if abs(X_R1 - X_R) <= acceptable_threshold:
-                # TODO: shouldn't we just return here?
-                break
+                return t, math.degrees(a_R1)
 
             # We've passed the target (aka we're close), now oscillate around the actual
             # target value until it's 'good enough' or it's taking too long.
@@ -310,8 +324,7 @@ def solve_pitch(
                 increasing_t = not increasing_t
                 break
 
-            # TODO: wtf???? this always evaluates to true at the start???
-            t = t + (step_size if increasing_t == low else -step_size)
+            t += step_size if increasing_t == low else -step_size
 
         # Increase the precision after breaking out, since we're closer to target
         step_size = step_size / 2
@@ -359,10 +372,22 @@ def calculate_solution(
     return yaw, pitch, t
 
 
-@timed_function
 def calculate_solution_moving(
-    cannon: Cannon, target: Target, low: bool
+    cannon: Cannon, target_pos: Vector, target_vel: Vector, low: bool
 ) -> tuple[float, float, float] | None:
+    """
+    Calculates the angles and flight time for either the low or high
+    pitch solution given a target position AND target velocity.
+
+    Args:
+        cannon (Cannon):
+        target_pos (Vector):
+        target_vel (Vector):
+        low (bool):
+
+    Returns:
+        tuple[float, float, float] | None: (yaw, pitch, flight time)
+    """
     threshold = 0.5  # well, dt is an int and we're rounding anyway.
     num_halvings = 12
     step_size = 75
@@ -375,23 +400,22 @@ def calculate_solution_moving(
             # TODO: this is a lazy (slow) way to do it. Ideally, you'd create an
             # entirely new solver so you avoid this double solving loop. But I'm
             # kinda lazy so that's a problem for in the future.
-            pred_pos = target.pos.add(target.vel.mul(t))
+            pred_pos = target_pos.add(target_vel.mul(t))
             result = calculate_solution(cannon, pred_pos, low)
             if result is not None:
                 _, _, shell_t = result
                 error = shell_t - t
 
                 if abs(error) <= threshold:
-                    pred_pos = target.pos.add(target.vel.mul(t))
-                    return calculate_solution(cannon, pred_pos, low)
+                    return result
 
                 if (increasing_t and error < 0) or (not increasing_t and error > 0):
                     increasing_t = not increasing_t
+                    t += step_size if increasing_t == low else -step_size
                     break
 
-            t = t + (step_size if increasing_t else -step_size)
-            if t0 > t or t > tn:
-                # Prevent endless looping.
+            t += step_size if increasing_t == low else -step_size
+            if t0 > t or t > tn:  # We've searched the entire space; give up.
                 return None
 
         step_size /= 2
@@ -656,7 +680,6 @@ def velocity_to_angles(vel: Vector) -> tuple[float, float]:
     return yaw, pitch
 
 
-@timed_function
 def estimate_muzzle(
     observations: list[tuple[float, Vector]],
     min_vms: int = None,

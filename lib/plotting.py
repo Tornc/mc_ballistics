@@ -10,7 +10,7 @@ def add_trace(
     mode: str = "markers",
     name: str | None = None,
     size: int | None = None,
-    line_dash: str | None = None, # ugly but I'm tired.
+    line_dash: str | None = None,  # ugly but I'm tired.
 ):
     # Convert single vector to list to make life easier.
     if isinstance(positions, Vector):
@@ -102,12 +102,17 @@ def populate_plot(
     fig,
     cannon: Cannon,
     target_pos: Vector,
+    target_path: list[tuple[int, Vector]],
     radar: Radar,
     display_radar_range: bool,
     stats: dict,
 ):
     add_trace(fig, cannon.pos, "markers+text", "Cannon", 12)
-    add_trace(fig, target_pos, "markers+text", "Target", 12)
+    if target_path:
+        add_trace(fig, [p for _, p in target_path], "lines", "Target path", 8)
+        add_trace(fig, target_pos, "markers+text", "Target", 12)
+    elif target_pos:
+        add_trace(fig, target_pos, "markers+text", "Target", 12)
 
     if not radar.pos.equals(target_pos):
         add_trace(fig, radar.pos, "markers+text", "Radar", 12)

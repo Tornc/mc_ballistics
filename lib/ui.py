@@ -12,6 +12,7 @@ def center_text(columns, texts):
 def sett_clc_target():
     st.text("Target")
     with st.container(border=True):
+        st.text("Position")
         col = st.columns(3)
         center_text(col, ["X", "Y", "Z"])
         col[0].number_input(
@@ -36,6 +37,37 @@ def sett_clc_target():
             min_value=-DF_MAX_ENVIRONMENT_SIZE,
         )
 
+        st.text("Velocity (m/s)", help=f"Please don't set it to +/-{DF_MAX_ENVIRONMENT_SIZE}.")
+        col = st.columns(3)
+        center_text(col, ["X", "Y", "Z"])
+        col[0].number_input(
+            format="%0.1f",
+            key="target_vel_x",
+            label_visibility="collapsed",
+            label="",
+            max_value=float(DF_MAX_ENVIRONMENT_SIZE),
+            min_value=float(-DF_MAX_ENVIRONMENT_SIZE),
+            placeholder=f"{DF_TARGET_VEL_X}"
+        )
+        col[1].number_input(
+            format="%0.1f",
+            key="target_vel_y",
+            label_visibility="collapsed",
+            label="",
+            max_value=float(DF_MAX_ENVIRONMENT_SIZE),
+            min_value=float(-DF_MAX_ENVIRONMENT_SIZE),
+            placeholder=f"{DF_TARGET_VEL_Y}"
+        )
+        col[2].number_input(
+            format="%0.1f",
+            key="target_vel_z",
+            label_visibility="collapsed",
+            label="",
+            max_value=float(DF_MAX_ENVIRONMENT_SIZE),
+            min_value=float(-DF_MAX_ENVIRONMENT_SIZE),
+            placeholder=f"{DF_TARGET_VEL_Z}",
+        )
+        
 
 def sett_clc_cannon():
     st.text("Cannon")
@@ -286,7 +318,7 @@ def sidebar():
             if do_reroll:
                 st.session_state["statistics"] = perform_simulation(
                     cannon=ssg("cannon"),
-                    target_pos=ssg("target_pos"),
+                    target=ssg("target"),
                     fire_at_target=not ssg("manual_fire"),
                     trajectory_type=ssg("trajectory_type"),
                     perform_estimation=ssg("perform_estimation"),

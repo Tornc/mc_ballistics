@@ -2,7 +2,7 @@ import streamlit as st
 
 from lib.constr import init_state, DF_MAX_ENVIRONMENT_SIZE
 from lib.plotting import init_plot, populate_plot
-from lib.simulation import Cannon, Radar, perform_simulation
+from lib.simulation import Cannon, Target, Radar, perform_simulation
 from lib.ui import sidebar, plot, results
 from lib.utils import Vector, ssg
 
@@ -44,10 +44,17 @@ def generate_statistics():
         min_pitch=ssg("cannon_pitch_range")[0],
         max_pitch=ssg("cannon_pitch_range")[1],
     )
-    st.session_state["target_pos"] = Vector(
-        ssg("target_pos_x"),
-        ssg("target_pos_y"),
-        ssg("target_pos_z"),
+    st.session_state["target"] = Target(
+        Vector(
+            ssg("target_pos_x"),
+            ssg("target_pos_y"),
+            ssg("target_pos_z"),
+        ),
+        Vector(
+            ssg("target_vel_x"),
+            ssg("target_vel_y"),
+            ssg("target_vel_z"),
+        ),
     )
     st.session_state["radar"] = Radar(
         pos=Vector(
@@ -73,7 +80,7 @@ def generate_statistics():
     )
     st.session_state["statistics"] = perform_simulation(
         cannon=ssg("cannon"),
-        target_pos=ssg("target_pos"),
+        target=ssg("target"),
         fire_at_target=not ssg("manual_fire"),
         trajectory_type=ssg("trajectory_type"),
         perform_estimation=ssg("perform_estimation"),
@@ -90,7 +97,8 @@ def generate_figure():
     return populate_plot(
         fig=init_plot(DF_MAX_ENVIRONMENT_SIZE, height=600),
         cannon=ssg("cannon"),
-        target_pos=ssg("target_pos"),
+        target_pos=ssg("target").pos,
+        target_path=ssg("statistics").get("target_path"),
         radar=ssg("radar"),
         display_radar_range=ssg("perform_estimation"),
         stats=ssg("statistics"),
@@ -111,5 +119,3 @@ with tab1:
     plot(generate_figure())
 with tab2:
     results()
-
-# TODO: don't forget to update the radar pos afterwards!

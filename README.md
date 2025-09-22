@@ -1,15 +1,22 @@
 # Create: Big Cannons Cannon Doxxer
 
-A ballistics simulation tool for the [Create: Big Cannons](https://modrinth.com/mod/create-big-cannons) addon. Features trajectory visualisation, a firing solution calculator and a way to reverse-locate a cannon's position... in theory.
+A ballistics simulation tool for the [Create: Big Cannons](https://modrinth.com/mod/create-big-cannons) addon.
+
+Features:
+- Trajectory visualisation
+- Firing solution calculator (with target lead)
+- Reverse-locating a cannon's position
 
 Check it out at: https://tornc.github.io/mc_ballistics/.
 
 ## How to use
 
 1. Click on the link.
-2. Use the sidebar to set simulation parameters. The 'Calculator' section contains run-of-the-mill features for firing at coordinates. The 'Reverse calculator' is the one doing the 'doxxing'.
-3. The main view ('Plot' tab) displays an interactive 3D plot, in which you can move around with the camera.
-4. The 'Results' tab shows information required for firing solutions.
+2. Use the sidebar to set simulation parameters. 
+3. The 'Calculator' section can fire at coordinates or a moving target.
+4. The 'Reverse calculator' has settings that affect the calculator's performance.
+5. The main view ('Plot' tab) displays an interactive 3D plot, in which you can move around with the camera.
+6. The 'Results' tab shows information required for firing solutions.
 
 ---
 
@@ -52,7 +59,6 @@ Through the drag coefficient (C<sub>d</sub>) and gravity (G), we know the shape 
         Visualisation on how it works, drawn by yours truly. Sorry, I'm not an artist 💀.
     </em>
 </p>
-
 
 > [!NOTE]
 > We don't forward simulate the entire arc, only parts that correspond to an observation - and only if the velocity is plausible.
@@ -101,9 +107,8 @@ If you're interested in CBC ballistics, I highly recommend taking a look at thei
 
 ## TODO
 
-- [ ] bugfix pitch solver
-- [ ] Target lead integration
 - [ ] Link the specific Discord message from @sashafiesta.
-- [ ] Commenting in simulation.py for estimating cd and g
-- [ ] Make target lead function not inefficient as fuck
-- [ ] Create a proper binary without: 1) Pyodide / package load times. 2) fugly Electron bar
+- [ ] Update pictures
+- [ ] Commenting in simulation.py for estimating cd and g.
+- [ ] Make target lead function not inefficient as fuck.
+- [ ] Create a proper binary without: 1) Pyodide / package load times. 2) fugly Electron bar.

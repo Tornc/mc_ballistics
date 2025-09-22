@@ -19,6 +19,9 @@ DF_CANNON_MAX_LENGTH: int = 128  # not in Cannon(), but related.
 DF_TARGET_POS_X: int = 800
 DF_TARGET_POS_Y: int = 10
 DF_TARGET_POS_Z: int = 340
+DF_TARGET_VEL_X: float = 0.0
+DF_TARGET_VEL_Y: float = 0.0
+DF_TARGET_VEL_Z: float = 0.0
 
 # DEFAULT: RADAR
 DF_RADAR_POS_X: int = None
@@ -67,6 +70,9 @@ def init_state():
     sset("target_pos_x", DF_TARGET_POS_X)
     sset("target_pos_y", DF_TARGET_POS_Y)
     sset("target_pos_z", DF_TARGET_POS_Z)
+    sset("target_vel_x", DF_TARGET_VEL_X)
+    sset("target_vel_y", DF_TARGET_VEL_Y)
+    sset("target_vel_z", DF_TARGET_VEL_Z)
     # INITIAL: RADAR
     sset("radar_pos_x", DF_RADAR_POS_X)
     sset("radar_pos_y", DF_RADAR_POS_Y)
@@ -85,6 +91,6 @@ def init_state():
     sset("perform_estimation", DF_PERFORM_ESTIMATION)
     # INITIAL: AGGREGATE
     sset("cannon", None)
-    sset("target_pos", None)
+    sset("target", None)
     sset("radar", None)
     sset("statistics", None)
