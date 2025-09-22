@@ -41,6 +41,7 @@ def sett_clc_target():
         col = st.columns(3)
         center_text(col, ["X", "Y", "Z"])
         col[0].number_input(
+            disabled=ssg("manual_fire"),
             format="%0.1f",
             key="target_vel_ms_x",
             label_visibility="collapsed",
@@ -50,6 +51,7 @@ def sett_clc_target():
             placeholder=f"{DF_TARGET_VEL_MS_X}"
         )
         col[1].number_input(
+            disabled=ssg("manual_fire"),
             format="%0.1f",
             key="target_vel_ms_y",
             label_visibility="collapsed",
@@ -59,6 +61,7 @@ def sett_clc_target():
             placeholder=f"{DF_TARGET_VEL_MS_Y}"
         )
         col[2].number_input(
+            disabled=ssg("manual_fire"),
             format="%0.1f",
             key="target_vel_ms_z",
             label_visibility="collapsed",
