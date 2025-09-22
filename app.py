@@ -111,3 +111,5 @@ with tab1:
     plot(generate_figure())
 with tab2:
     results()
+
+# TODO: don't forget to update the radar pos afterwards!

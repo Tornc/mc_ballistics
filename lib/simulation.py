@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from time import time
 from lib.utils import *
 
-EPSILON = 1e-12
+EPSILON = 1e-9
 
 # === General ===
 
@@ -20,6 +20,12 @@ class Cannon:
     pitch: float
     min_pitch: float
     max_pitch: float
+
+
+@dataclass
+class Target:
+    pos: Vector
+    vel: Vector
 
 
 @dataclass
@@ -49,7 +55,7 @@ def perform_simulation(
         trajectory = simulate_trajectory(cannon, stop_y=target_pos.y)
         results.update(dict(yaw=cannon.yaw, pitch=cannon.pitch))
     else:
-        rs = calculate_yaw_pitch_t(cannon, target_pos, trajectory_type == "low")
+        rs = calculate_solution(cannon, target_pos, trajectory_type == "low")
         if rs is not None:
             yaw, pitch, t = rs
             if pitch >= cannon.min_pitch and pitch <= cannon.max_pitch:
@@ -115,142 +121,13 @@ def perform_simulation(
 # === Simulation ===
 
 
-def solve_pitch(
-    distance: float,
-    velocity_ms: float,
-    target_height: float,
-    cannon_length: int,
-    gravity: float,
-    drag_coefficient: float,
-    low: bool,
-):
-    """
-    All math comes from Endal's ballistics calculator made in Desmos (https://www.desmos.com/calculator/az4angyumw),
-    there may be bugs because the formulas sure look like some kind of alien language to me. It's >60x faster than
-    brute-forcing pitch, and has higher precision to boot.
-    """
-
-    # Constants
-    g = gravity  # CBC gravity
-    cd = drag_coefficient  # drag coefficient
-    t0 = 0  # Minimum projectile flight time in ticks
-    tn = 750  # Maximum projectile flight time in ticks
-    start_step_size = 18.75
-
-    # Inputs
-    X_R = distance
-    v_m = velocity_ms
-    h = target_height
-    L = cannon_length
-
-    u = v_m / 20  # Convert to velocity per tick
-
-    # Higher order parameters
-    A = g * cd / (u * (1 - cd))
-
-    def B(t):
-        return t * (g * cd / (1 - cd)) * 1 / X_R
-
-    C = L / (u * X_R) * (g * cd / (1 - cd)) + h / X_R
-
-    # The idea is to start with very large steps and decrease step size
-    # the closer we get to the actual value.
-    num_halvings = 10  # This is fine, too many halvings will slow down
-    acceptable_threshold = 0.001  # How close to X_R is good enough
-
-    def a_R(t):
-        # "watch out for the square root" -Endal
-        B_t = B(t)
-        in_root = -(A**2) + B_t**2 + C**2 + 2 * B_t * C + 1
-        if in_root < 0:
-            return None
-
-        num_a_R = math.sqrt(in_root) - 1
-        den_a_R = A + B_t + C
-        return 2 * math.atan(num_a_R / den_a_R)
-
-    # t = time projectile, either start from t0 and increment or tn and decrement
-    t = t0 if low else tn
-    increasing_t = low
-    step_size = start_step_size
-
-    a_R1 = None  # scope reasons, since we need to return it
-
-    for _ in range(num_halvings):
-        while True:
-            # It's taking too long, give up
-            if (low and t >= tn) or (not low and t <= t0):
-                return None, None
-
-            # Angle of projectile at t
-            a_R1 = a_R(t)
-            # a square root being negative means something
-            # has gone wrong, so give up
-            if a_R1 is None:
-                return None, None
-
-            # Distance of projectile at t
-            p1_X_R1 = u * math.cos(a_R1) / math.log(cd)
-            p2_X_R1 = cd**t - 1
-            p3_X_R1 = L * math.cos(a_R1)
-            X_R1 = p1_X_R1 * p2_X_R1 + p3_X_R1
-
-            # Good enough, let's call it quits
-            if abs(X_R1 - X_R) <= acceptable_threshold:
-                break
-
-            # We've passed the target (aka we're close), now oscillate around the actual
-            # target value until it's 'good enough' or it's taking too long.
-            if (increasing_t and X_R1 > X_R) or (not increasing_t and X_R1 < X_R):
-                increasing_t = not increasing_t
-                break
-
-            t = t + (step_size if increasing_t == low else -step_size)
-
-        # Increase the precision after breaking out, since we're closer to target
-        step_size = step_size / 2
-
-    return t, math.degrees(a_R1)
-
-
-def calculate_yaw_pitch_t(
-    cannon: Cannon, target_pos: Vector, low: bool
-) -> tuple[float, float, float] | None:
-    """
-    Calculates the angles and flight time for either the low or high
-    pitch solution given a target coordinate.
-
-    Args:
-        cannon (Cannon):
-        target_pos (Vector):
-        low (bool):
-
-    Returns:
-        tuple[float, float, float] | None:
-    """
-    dpos = target_pos.sub(cannon.pos)
-    # The target is literally inside the barrel
-    if dpos.length() <= cannon.length:
-        return
-
-    horizontal_dist = math.sqrt(dpos.x**2 + dpos.z**2)
-    t, pitch = solve_pitch(
-        distance=horizontal_dist,
-        velocity_ms=cannon.v_ms,
-        target_height=dpos.y,
-        cannon_length=cannon.length,
-        gravity=cannon.g,
-        drag_coefficient=cannon.cd,
-        low=low,
-    )
-
-    if t is None:
-        return
-
-    # Following CBC convention.
-    yaw = -math.degrees(math.atan2(dpos.x, dpos.z))
-    yaw = (yaw + 360) % 360  # -180, 180 => 0, 360
-    return yaw, pitch, t
+def simulate_target(target: Target, ticks: int):
+    path = []
+    pos = target.pos
+    for t in range(ticks + 1):
+        path.append((t, pos.copy()))
+        pos = pos.add(target.vel)
+    return path
 
 
 def simulate_trajectory(
@@ -339,6 +216,189 @@ def get_observed_trajectory(
     return items
 
 
+# === Ballistic Calculator ===
+
+
+def solve_pitch(
+    distance: float,
+    velocity_ms: float,
+    target_height: float,
+    cannon_length: int,
+    gravity: float,
+    drag_coefficient: float,
+    low: bool,
+):
+    """
+    All math comes from Endal's ballistics calculator made in Desmos (https://www.desmos.com/calculator/az4angyumw),
+    there may be bugs because the formulas sure look like some kind of alien language to me. It's >60x faster than
+    brute-forcing pitch, and has higher precision to boot.
+    """
+
+    # Constants
+    g = gravity  # CBC gravity
+    cd = drag_coefficient  # drag coefficient
+    t0 = 0  # Minimum projectile flight time in ticks
+    tn = 750  # Maximum projectile flight time in ticks
+    start_step_size = 18.75
+
+    # Inputs
+    X_R = distance
+    v_m = velocity_ms
+    h = target_height
+    L = cannon_length
+
+    u = v_m / 20  # Convert to velocity per tick
+
+    # Higher order parameters
+    A = g * cd / (u * (1 - cd))
+
+    def B(t):
+        return t * (g * cd / (1 - cd)) * 1 / X_R
+
+    C = L / (u * X_R) * (g * cd / (1 - cd)) + h / X_R
+
+    # The idea is to start with very large steps and decrease step size
+    # the closer we get to the actual value.
+    num_halvings = 10  # This is fine, too many halvings will slow down
+    acceptable_threshold = 0.001  # How close to X_R is good enough
+
+    def a_R(t):
+        # "watch out for the square root" -Endal
+        B_t = B(t)
+        in_root = -(A**2) + B_t**2 + C**2 + 2 * B_t * C + 1
+        if in_root < 0:
+            return None
+
+        num_a_R = math.sqrt(in_root) - 1
+        den_a_R = A + B_t + C
+        return 2 * math.atan(num_a_R / den_a_R)
+
+    # t = time projectile, either start from t0 and increment or tn and decrement
+    t = t0 if low else tn
+    increasing_t = low
+    step_size = start_step_size
+
+    a_R1 = None  # scope reasons, since we need to return it
+
+    for _ in range(num_halvings):
+        while True:
+            # It's taking too long, give up
+            if (low and t >= tn) or (not low and t <= t0):
+                return None, None
+
+            # Angle of projectile at t
+            a_R1 = a_R(t)
+            # a square root being negative means something
+            # has gone wrong, so give up
+            if a_R1 is None:
+                return None, None
+
+            # Distance of projectile at t
+            p1_X_R1 = u * math.cos(a_R1) / math.log(cd)
+            p2_X_R1 = cd**t - 1
+            p3_X_R1 = L * math.cos(a_R1)
+            X_R1 = p1_X_R1 * p2_X_R1 + p3_X_R1
+
+            # Good enough, let's call it quits
+            if abs(X_R1 - X_R) <= acceptable_threshold:
+                # TODO: shouldn't we just return here?
+                break
+
+            # We've passed the target (aka we're close), now oscillate around the actual
+            # target value until it's 'good enough' or it's taking too long.
+            if (increasing_t and X_R1 > X_R) or (not increasing_t and X_R1 < X_R):
+                increasing_t = not increasing_t
+                break
+
+            # TODO: wtf???? this always evaluates to true at the start???
+            t = t + (step_size if increasing_t == low else -step_size)
+
+        # Increase the precision after breaking out, since we're closer to target
+        step_size = step_size / 2
+
+    return t, math.degrees(a_R1)
+
+
+def calculate_solution(
+    cannon: Cannon, target_pos: Vector, low: bool
+) -> tuple[float, float, float] | None:
+    """
+    Calculates the angles and flight time for either the low or high
+    pitch solution given a target coordinate.
+
+    Args:
+        cannon (Cannon):
+        target_pos (Vector):
+        low (bool):
+
+    Returns:
+        tuple[float, float, float] | None: (yaw, pitch, flight time)
+    """
+    dpos = target_pos.sub(cannon.pos)
+    # The target is literally inside the barrel
+    if dpos.length() <= cannon.length:
+        return
+
+    horizontal_dist = math.sqrt(dpos.x**2 + dpos.z**2)
+    t, pitch = solve_pitch(
+        distance=horizontal_dist,
+        velocity_ms=cannon.v_ms,
+        target_height=dpos.y,
+        cannon_length=cannon.length,
+        gravity=cannon.g,
+        drag_coefficient=cannon.cd,
+        low=low,
+    )
+
+    if t is None:
+        return
+
+    # Following CBC convention.
+    yaw = -math.degrees(math.atan2(dpos.x, dpos.z))
+    yaw = (yaw + 360) % 360  # -180, 180 => 0, 360
+    return yaw, pitch, t
+
+
+@timed_function
+def calculate_solution_moving(
+    cannon: Cannon, target: Target, low: bool
+) -> tuple[float, float, float] | None:
+    threshold = 0.5  # well, dt is an int and we're rounding anyway.
+    num_halvings = 12
+    step_size = 75
+
+    t0, tn = 0, 750
+    t = t0 if low else tn
+    increasing_t = low
+    for _ in range(num_halvings):
+        while True:
+            # TODO: this is a lazy (slow) way to do it. Ideally, you'd create an
+            # entirely new solver so you avoid this double solving loop. But I'm
+            # kinda lazy so that's a problem for in the future.
+            pred_pos = target.pos.add(target.vel.mul(t))
+            result = calculate_solution(cannon, pred_pos, low)
+            if result is not None:
+                _, _, shell_t = result
+                error = shell_t - t
+
+                if abs(error) <= threshold:
+                    pred_pos = target.pos.add(target.vel.mul(t))
+                    return calculate_solution(cannon, pred_pos, low)
+
+                if (increasing_t and error < 0) or (not increasing_t and error > 0):
+                    increasing_t = not increasing_t
+                    break
+
+            t = t + (step_size if increasing_t else -step_size)
+            if t0 > t or t > tn:
+                # Prevent endless looping.
+                return None
+
+        step_size /= 2
+
+    return None
+
+
 # === Reverse-location ===
 
 
@@ -390,12 +450,12 @@ def estimate_cd(velocities: list[int, Vector], g: float = None) -> float | None:
             return  # no guaranteed root
 
         while high - low > EPSILON:
-            middle = (low + high) / 2
-            f_mid = f(middle)
+            mid = (low + high) / 2
+            f_mid = f(mid)
             if f_low * f_mid <= 0:
-                high, f_high = middle, f_mid
+                high, f_high = mid, f_mid
             else:
-                low, f_low = middle, f_mid
+                low, f_low = mid, f_mid
 
         return (low + high) / 2
 
@@ -509,7 +569,7 @@ def forward_state(
     Closed form of simulate_trajectory()
 
     Args:
-        p0 (Vector): 
+        p0 (Vector):
         v0 (Vector):
         cd (float):
         g (float):
@@ -596,6 +656,7 @@ def velocity_to_angles(vel: Vector) -> tuple[float, float]:
     return yaw, pitch
 
 
+@timed_function
 def estimate_muzzle(
     observations: list[tuple[float, Vector]],
     min_vms: int = None,
@@ -606,7 +667,7 @@ def estimate_muzzle(
     max_t: int = 750,
 ) -> dict | None:
     """
-    Notes: 
+    Notes:
         Be careful with your assumptions, conservative estimates are better than getting nothing at all.
 
     Args:
