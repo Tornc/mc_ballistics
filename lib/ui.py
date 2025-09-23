@@ -132,7 +132,7 @@ def sett_clc_cannon():
         st.number_input(
             help=f"{DF_CANNON_CD} for big cannons.",
             key="cannon_cd",
-            label="Drag",
+            label="Drag coefficient",
             max_value=1.0,
             min_value=0.0,
             placeholder=f"{DF_CANNON_CD}",

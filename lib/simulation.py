@@ -401,6 +401,7 @@ def calculate_solution_moving(
             # TODO: this is a lazy (slow) way to do it. Ideally, you'd create an
             # entirely new solver so you avoid this double solving loop. But I'm
             # kinda lazy so that's a problem for in the future.
+            # TODO: sometimes the high solution is not found even though it should've been.
             pred_pos = target_pos.add(target_vel.mul(t))
             result = calculate_solution(cannon, pred_pos, low)
             if result is not None:
