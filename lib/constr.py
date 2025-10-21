@@ -39,12 +39,12 @@ DF_ASSUMED_VELOCITY_MULTIPLE: int = 40
 DF_MAX_ASSUMED_VELOCITY: int = 1000
 
 # DEFAULT: ENVIRONMENT
-DF_MAX_ENVIRONMENT_SIZE: int = 1500
+DF_MAX_ENVIRONMENT_SIZE: int = 10**9  # Basically infinite.
 
 # DEFAULT: MISC
 DF_MANUAL_FIRE: bool = False
-DF_TRAJECTORY_TYPE: str = "high"  # "low" or "high"
-DF_PERFORM_ESTIMATION: bool = True
+DF_TRAJECTORY_TYPE: str = "low"  # "low" or "high"
+DF_PERFORM_ESTIMATION: bool = False
 
 
 def sset(key: str, default):

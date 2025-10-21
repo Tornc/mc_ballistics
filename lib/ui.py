@@ -111,7 +111,7 @@ def sett_clc_cannon():
             key="cannon_length",
             label="Cannon length",
             max_value=DF_CANNON_MAX_LENGTH,
-            min_value=1,
+            min_value=0,
             placeholder=f"{DF_CANNON_LENGTH}",
         )
         st.select_slider(

@@ -669,11 +669,6 @@ def evaluate(
 def velocity_to_angles(vel: Vector) -> tuple[float, float]:
     """
     Calculates the direction of motion based on the velocity vector.
-    Args:
-        vel (Vector):
-
-    Returns:
-        tuple[float, float]: yaw, pitch
     """
     horiz = math.hypot(vel.x, vel.z) + EPSILON
     pitch = math.degrees(math.atan2(vel.y, horiz))
